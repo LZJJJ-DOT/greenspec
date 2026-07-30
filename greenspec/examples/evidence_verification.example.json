@@ -1,0 +1,92 @@
+{
+  "verification_id": "VER-001",
+  "decision": "revise",
+  "summary": {
+    "claims_total": 3,
+    "supported": 1,
+    "partially_supported": 1,
+    "unsupported": 1,
+    "needs_manual_review": 0
+  },
+  "research_again_queries": [
+    "绿色建筑二星级预审所需的公共建筑评分项计算依据"
+  ],
+  "items": [
+    {
+      "verification_id": "VER-CLAIM-001",
+      "claim_id": "CLAIM-001",
+      "claim": "The project can proceed with a two-star green building precheck.",
+      "status": "partially_supported",
+      "evidence_ids": [
+        "GBT50378-2019-004"
+      ],
+      "required_source_levels": [
+        "T0"
+      ],
+      "actual_source_levels": [
+        "T0"
+      ],
+      "source_level_check": "pass",
+      "citation_check": {
+        "source_present": true,
+        "clause_no_present": true,
+        "page_present": true,
+        "version_present": true
+      },
+      "issues": [
+        "Required project calculation data is incomplete."
+      ],
+      "recommended_action": "revise"
+    },
+    {
+      "verification_id": "VER-CLAIM-002",
+      "claim_id": "CLAIM-002",
+      "claim": "The system should use local clauses, web research, and project documents.",
+      "status": "supported",
+      "evidence_ids": [
+        "GBT50378-2019-001",
+        "WEB-001",
+        "DOC-001"
+      ],
+      "required_source_levels": [
+        "T0",
+        "PROJECT"
+      ],
+      "actual_source_levels": [
+        "T0",
+        "PROJECT"
+      ],
+      "source_level_check": "pass",
+      "citation_check": {
+        "source_present": true,
+        "clause_no_present": true,
+        "page_present": true,
+        "version_present": true
+      },
+      "issues": [],
+      "recommended_action": "accept"
+    },
+    {
+      "verification_id": "VER-CLAIM-003",
+      "claim_id": "CLAIM-003",
+      "claim": "The project already satisfies the three-star target.",
+      "status": "unsupported",
+      "evidence_ids": [],
+      "required_source_levels": [
+        "T0"
+      ],
+      "actual_source_levels": [],
+      "source_level_check": "fail",
+      "citation_check": {
+        "source_present": false,
+        "clause_no_present": false,
+        "page_present": false,
+        "version_present": false
+      },
+      "issues": [
+        "No evidence supports the three-star achievement claim."
+      ],
+      "recommended_action": "research_again"
+    }
+  ]
+}

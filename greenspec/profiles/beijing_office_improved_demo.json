@@ -1,0 +1,65 @@
+{
+  "project_id": "beijing_office_improved_demo",
+  "project_name": "北京某普通办公楼项目（资料改善版）",
+  "location": {
+    "country": "中国",
+    "province": "北京市",
+    "city": "北京市",
+    "district": "朝阳区",
+    "climate_zone": "寒冷地区"
+  },
+  "building": {
+    "building_type": "普通办公楼",
+    "building_type_code": "office",
+    "building_category": "public_building",
+    "new_or_existing": "new_building",
+    "design_phase": "scheme_or_preliminary_design",
+    "gross_floor_area_m2": 42000,
+    "above_ground_area_m2": 32000,
+    "underground_area_m2": 10000,
+    "building_height_m": 45,
+    "above_ground_floors": 10,
+    "underground_floors": 2,
+    "plot_ratio": 2.5,
+    "green_space_ratio": 0.3
+  },
+  "green_building_target": {
+    "precheck": "two_star",
+    "gap_analysis": "three_star",
+    "ai_final_certification_allowed": false
+  },
+  "available_documents": [
+    "项目参数表更新版",
+    "建筑设计说明",
+    "节能专篇",
+    "围护结构热工参数表",
+    "照明功率密度计算书",
+    "建筑能耗模拟报告",
+    "可再生能源专项方案",
+    "绿色建筑评分计算表",
+    "正式专项计算报告"
+  ],
+  "known_parameters": {
+    "has_energy_special_report": true,
+    "has_green_building_plan": true,
+    "has_energy_simulation_result": true,
+    "has_daylight_simulation_result": false,
+    "has_green_score_calculation": true,
+    "has_formal_calculation_report": true,
+    "has_envelope_thermal_parameters": true,
+    "has_hvac_system_scheme": true,
+    "has_lighting_power_density": true,
+    "has_renewable_energy_scheme": true,
+    "has_water_saving_scheme": true,
+    "has_green_material_ratio": false
+  },
+  "missing_fields": [
+    "采光模拟结果",
+    "绿色建材比例"
+  ],
+  "review_boundary": {
+    "is_automatic_drawing_review": false,
+    "is_final_green_building_certification": false,
+    "requires_human_review": true
+  }
+}

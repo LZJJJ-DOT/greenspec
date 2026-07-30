@@ -1,0 +1,25 @@
+{
+  "query": "请针对北京普通办公楼方案/初设阶段，研究绿色建筑二星级预审与三星级差距分析所需关注的规范、政策和资料缺口，重点关注绿色建筑评价、建筑节能与可再生能源利用。",
+  "max_sections": 4,
+  "publish_formats": {
+    "markdown": true,
+    "pdf": false,
+    "docx": false
+  },
+  "include_human_feedback": false,
+  "follow_guidelines": true,
+  "model": "deepseek-v4-flash",
+  "guidelines": [
+    "报告必须面向绿色建筑咨询预审场景，而不是普通科普文章。",
+    "报告必须明确系统边界：不做自动审图，不替代绿建专家，不直接给出三星达标结论。",
+    "报告必须区分本地条文库、Web research 和项目资料三类证据来源。",
+    "报告必须指出资料不足、待人工复核和后续需要补充的专项计算。",
+    "报告应使用中文输出。"
+  ],
+  "verbose": true,
+  "source": "web",
+  "project_profile_path": "greenspec/profiles/beijing_office_demo.json",
+  "local_clause_path": "greenspec/knowledge_base/index/clauses.jsonl",
+  "project_doc_path": "greenspec/project_docs/beijing_office_demo.md",
+  "max_research_again_count": 1
+}

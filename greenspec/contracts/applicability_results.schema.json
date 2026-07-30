@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://greenspec.local/contracts/applicability_results.schema.json",
+  "title": "GreenSpec Applicability Results",
+  "description": "One record represents one applicability judgment for one evidence item or clause.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "result_id",
+      "evidence_id",
+      "clause_id",
+      "clause_no",
+      "applicable_status",
+      "confidence",
+      "reason_codes",
+      "project_matches",
+      "missing_facts",
+      "manual_review_required"
+    ],
+    "properties": {
+      "result_id": {
+        "type": "string",
+        "pattern": "^APP-[0-9]{3,}$"
+      },
+      "evidence_id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "clause_id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "clause_no": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "applicable_status": {
+        "type": "string",
+        "enum": [
+          "applicable",
+          "not_applicable",
+          "needs_manual_review"
+        ]
+      },
+      "confidence": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1
+      },
+      "reason_codes": {
+        "type": "array",
+        "minItems": 0,
+        "uniqueItems": true,
+        "items": {
+          "type": "string",
+          "enum": [
+            "PROJECT_SCOPE_MATCHED",
+            "REGION_MATCHED",
+            "BUILDING_TYPE_MATCHED",
+            "DESIGN_PHASE_MATCHED",
+            "GREEN_TARGET_SCOPE_MATCHED",
+            "PROJECT_FACTS_MISSING",
+            "REQUIRES_CALCULATION",
+            "MANUAL_REVIEW_REQUIRED",
+            "REGION_NOT_MATCHED",
+            "BUILDING_TYPE_NOT_MATCHED",
+            "DESIGN_PHASE_NOT_MATCHED",
+            "GREEN_TARGET_SCOPE_NOT_MATCHED"
+          ]
+        }
+      },
+      "project_matches": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "region",
+          "building_type",
+          "design_phase",
+          "green_target_scope"
+        ],
+        "properties": {
+          "region": {
+            "type": "boolean"
+          },
+          "building_type": {
+            "type": "boolean"
+          },
+          "design_phase": {
+            "type": "boolean"
+          },
+          "green_target_scope": {
+            "type": "boolean"
+          }
+        }
+      },
+      "missing_facts": {
+        "type": "array",
+        "minItems": 0,
+        "items": {
+          "type": "string"
+        }
+      },
+      "manual_review_required": {
+        "type": "boolean"
+      }
+    }
+  }
+}

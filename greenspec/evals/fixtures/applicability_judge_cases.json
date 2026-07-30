@@ -1,0 +1,97 @@
+{
+  "case_id": "APP-FIXTURE-001",
+  "description": "ApplicabilityJudge building type and project fact coverage",
+  "project_profile": {
+    "project_id": "beijing_office_test",
+    "location": {
+      "city": "北京市"
+    },
+    "building": {
+      "building_type": "普通办公楼",
+      "building_category": "public_building",
+      "building_type_code": "office",
+      "design_phase": "scheme_or_preliminary_design"
+    },
+    "green_building_target": {
+      "precheck": "two_star"
+    },
+    "known_parameters": {
+      "has_lighting_power_density": false
+    }
+  },
+  "evidence_items": [
+    {
+      "evidence_id": "TEST-RES-001",
+      "channel": "local_clause",
+      "confidence": 0.9,
+      "clause_no": "5.1.1",
+      "metadata": {
+        "clause_id": "TEST-RES-001",
+        "region": "national",
+        "building_type": [
+          "residential"
+        ],
+        "design_phase": [
+          "scheme_or_preliminary_design"
+        ],
+        "green_target_scope": [
+          "two_star_precheck"
+        ],
+        "requires_project_facts": [],
+        "requires_calculation": false,
+        "requires_manual_review": false
+      }
+    },
+    {
+      "evidence_id": "TEST-OFFICE-MISSING-001",
+      "channel": "local_clause",
+      "confidence": 0.9,
+      "clause_no": "7.2.1",
+      "metadata": {
+        "clause_id": "TEST-OFFICE-MISSING-001",
+        "region": "national",
+        "building_type": [
+          "office"
+        ],
+        "design_phase": [
+          "scheme_or_preliminary_design"
+        ],
+        "green_target_scope": [
+          "two_star_precheck"
+        ],
+        "requires_project_facts": [
+          "照明功率密度"
+        ],
+        "requires_calculation": false,
+        "requires_manual_review": false
+      }
+    },
+    {
+      "evidence_id": "TEST-OFFICE-OK-001",
+      "channel": "local_clause",
+      "confidence": 0.9,
+      "clause_no": "3.2.1",
+      "metadata": {
+        "clause_id": "TEST-OFFICE-OK-001",
+        "region": "national",
+        "building_type": [
+          "office"
+        ],
+        "design_phase": [
+          "scheme_or_preliminary_design"
+        ],
+        "green_target_scope": [
+          "two_star_precheck"
+        ],
+        "requires_project_facts": [],
+        "requires_calculation": false,
+        "requires_manual_review": false
+      }
+    }
+  ],
+  "expected_status": {
+    "TEST-RES-001": "not_applicable",
+    "TEST-OFFICE-MISSING-001": "needs_manual_review",
+    "TEST-OFFICE-OK-001": "applicable"
+  }
+}

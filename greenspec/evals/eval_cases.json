@@ -1,0 +1,175 @@
+﻿{
+  "version": "0.1",
+  "cases": [
+    {
+      "id": "EVAL-001",
+      "category": "task_decomposition",
+      "name": "Section count is reasonable",
+      "check": "sections_count",
+      "params": {
+        "min": 3,
+        "max": 8
+      }
+    },
+    {
+      "id": "EVAL-002",
+      "category": "task_decomposition",
+      "name": "Sections cover core project topics",
+      "check": "sections_keyword_coverage",
+      "params": {
+        "concept_groups": [
+          {
+            "name": "green_building",
+            "aliases": ["绿色建筑", "green building"]
+          },
+          {
+            "name": "star_gap",
+            "aliases": [
+              "二星", "三星",
+              "two-star", "three-star",
+              "two star", "three star"
+            ]
+          },
+          {
+            "name": "energy",
+            "aliases": ["节能", "能耗", "energy", "energy performance"]
+          },
+          {
+            "name": "renewable_energy",
+            "aliases": ["可再生能源", "renewable energy"]
+          },
+          {
+            "name": "data_gap",
+            "aliases": [
+              "资料缺口", "数据缺口",
+              "data and documentation",
+              "documentation requirements"
+            ]
+          }
+        ],
+        "min_groups": 4
+      }
+    },
+    {
+      "id": "EVAL-003",
+      "category": "clause_recall",
+      "name": "Local clause evidence is retrieved",
+      "check": "local_clause_count",
+      "params": {
+        "min": 1
+      }
+    },
+    {
+      "id": "EVAL-004",
+      "category": "clause_recall",
+      "name": "Core rating clauses are recalled",
+      "check": "expected_clause_hit",
+      "params": {
+        "expected_any": [
+          "GBT50378-2019-003",
+          "GBT50378-2019-004",
+          "GBT50378-2019-005"
+        ]
+      }
+    },
+    {
+      "id": "EVAL-005",
+      "category": "web_source_level",
+      "name": "Web source levels use allowed values",
+      "check": "web_levels_allowed",
+      "params": {
+        "allowed": [
+          "T1",
+          "T2",
+          "T3",
+          "T1_T2_T3_UNCLASSIFIED"
+        ]
+      }
+    },
+    {
+      "id": "EVAL-006",
+      "category": "web_source_level",
+      "name": "Web evidence is classified and has URL",
+      "check": "web_sources_classified",
+      "params": {
+        "explicit_levels": [
+          "T1",
+          "T2",
+          "T3"
+        ]
+      }
+    },
+    {
+      "id": "EVAL-007",
+      "category": "risk_level",
+      "name": "Risk levels are valid",
+      "check": "risk_levels_allowed",
+      "params": {
+        "allowed": [
+          "P0",
+          "P1",
+          "P2",
+          "P3"
+        ],
+        "min": 1
+      }
+    },
+    {
+      "id": "EVAL-008",
+      "category": "risk_level",
+      "name": "Critical missing parameters create high risk",
+      "check": "critical_missing_has_high_risk",
+      "params": {
+        "parameter_keys": [
+          "has_envelope_thermal_parameters",
+          "has_lighting_power_density",
+          "has_renewable_energy_scheme"
+        ],
+        "expected_levels": [
+          "P0",
+          "P1"
+        ]
+      }
+    },
+    {
+      "id": "EVAL-009",
+      "category": "report_structure",
+      "name": "Report contains required headings",
+      "check": "report_headings",
+      "params": {
+        "required_groups": [
+          {
+            "name": "introduction",
+            "aliases": ["introduction", "引言"]
+          },
+          {
+            "name": "table_of_contents",
+            "aliases": ["table of contents", "contents", "目录"]
+          },
+          {
+            "name": "conclusion",
+            "aliases": ["conclusion", "结论", "总结"]
+          },
+          {
+            "name": "references",
+            "aliases": ["references", "参考文献", "参考资料"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "EVAL-010",
+      "category": "report_structure",
+      "name": "Report is non-empty and has no placeholders",
+      "check": "report_quality",
+      "params": {
+        "min_chars": 500,
+        "forbidden": [
+          "## None",
+          "null",
+          "undefined"
+        ]
+      }
+    }
+  ]
+}

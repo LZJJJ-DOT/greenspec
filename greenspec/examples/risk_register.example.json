@@ -1,0 +1,24 @@
+[
+  {
+    "risk_id": "RISK-001",
+    "risk_level": "P1",
+    "title": "Missing core calculation data blocks three-star gap analysis",
+    "description": "The project is missing energy simulation results and envelope thermal parameters, so clauses involving score thresholds and required calculations can only enter manual review.",
+    "trigger_clause_ids": [
+      "GBT50378-2019-003",
+      "GBT50378-2019-004"
+    ],
+    "trigger_gap_ids": [
+      "GAP-001",
+      "GAP-006"
+    ],
+    "impact": "This affects the credibility of the two-star precheck and prevents a quantitative three-star gap conclusion.",
+    "mitigation": "Provide envelope thermal parameters, energy simulation results, and related calculation reports.",
+    "next_action": "request_project_documents",
+    "evidence_refs": [
+      "GBT50378-2019-003",
+      "GBT50378-2019-004",
+      "DOC-001"
+    ]
+  }
+]

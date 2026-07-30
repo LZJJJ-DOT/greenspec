@@ -1,0 +1,26 @@
+[
+  {
+    "result_id": "APP-001",
+    "evidence_id": "GBT50378-2019-004",
+    "clause_id": "GBT50378-2019-004",
+    "clause_no": "3.2.6-3.2.8",
+    "applicable_status": "needs_manual_review",
+    "confidence": 0.82,
+    "reason_codes": [
+      "PROJECT_SCOPE_MATCHED",
+      "REQUIRES_CALCULATION",
+      "MANUAL_REVIEW_REQUIRED"
+    ],
+    "project_matches": {
+      "region": true,
+      "building_type": true,
+      "design_phase": true,
+      "green_target_scope": true
+    },
+    "missing_facts": [
+      "building_energy_simulation_result",
+      "category_scoring_results"
+    ],
+    "manual_review_required": true
+  }
+]

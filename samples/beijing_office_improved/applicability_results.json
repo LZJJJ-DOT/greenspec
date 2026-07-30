@@ -1,0 +1,290 @@
+[
+  {
+    "result_id": "APP-001",
+    "evidence_id": "GBT50378-2019-004",
+    "clause_id": "GBT50378-2019-004",
+    "clause_no": "3.2.6-3.2.8",
+    "applicable_status": "needs_manual_review",
+    "confidence": 0.87,
+    "reason_codes": [
+      "REGION_MATCHED",
+      "BUILDING_TYPE_MATCHED",
+      "DESIGN_PHASE_MATCHED",
+      "GREEN_TARGET_SCOPE_MATCHED",
+      "PROJECT_SCOPE_MATCHED",
+      "MANUAL_REVIEW_REQUIRED"
+    ],
+    "project_matches": {
+      "region": true,
+      "building_type": true,
+      "design_phase": true,
+      "green_target_scope": true
+    },
+    "missing_facts": [],
+    "manual_review_required": true
+  },
+  {
+    "result_id": "APP-002",
+    "evidence_id": "GBT50378-2019-003",
+    "clause_id": "GBT50378-2019-003",
+    "clause_no": "3.2.5",
+    "applicable_status": "needs_manual_review",
+    "confidence": 0.87,
+    "reason_codes": [
+      "REGION_MATCHED",
+      "BUILDING_TYPE_MATCHED",
+      "DESIGN_PHASE_MATCHED",
+      "GREEN_TARGET_SCOPE_MATCHED",
+      "PROJECT_SCOPE_MATCHED",
+      "MANUAL_REVIEW_REQUIRED"
+    ],
+    "project_matches": {
+      "region": true,
+      "building_type": true,
+      "design_phase": true,
+      "green_target_scope": true
+    },
+    "missing_facts": [],
+    "manual_review_required": true
+  },
+  {
+    "result_id": "APP-003",
+    "evidence_id": "GBT50378-2019-018",
+    "clause_id": "GBT50378-2019-018",
+    "clause_no": "7.2.4",
+    "applicable_status": "needs_manual_review",
+    "confidence": 0.87,
+    "reason_codes": [
+      "REGION_MATCHED",
+      "BUILDING_TYPE_MATCHED",
+      "DESIGN_PHASE_MATCHED",
+      "GREEN_TARGET_SCOPE_MATCHED",
+      "PROJECT_SCOPE_MATCHED",
+      "MANUAL_REVIEW_REQUIRED"
+    ],
+    "project_matches": {
+      "region": true,
+      "building_type": true,
+      "design_phase": true,
+      "green_target_scope": true
+    },
+    "missing_facts": [],
+    "manual_review_required": true
+  },
+  {
+    "result_id": "APP-004",
+    "evidence_id": "GBT50378-2019-019",
+    "clause_id": "GBT50378-2019-019",
+    "clause_no": "7.2.5-7.2.8",
+    "applicable_status": "needs_manual_review",
+    "confidence": 0.87,
+    "reason_codes": [
+      "REGION_MATCHED",
+      "BUILDING_TYPE_MATCHED",
+      "DESIGN_PHASE_MATCHED",
+      "GREEN_TARGET_SCOPE_MATCHED",
+      "PROJECT_SCOPE_MATCHED",
+      "MANUAL_REVIEW_REQUIRED"
+    ],
+    "project_matches": {
+      "region": true,
+      "building_type": true,
+      "design_phase": true,
+      "green_target_scope": true
+    },
+    "missing_facts": [],
+    "manual_review_required": true
+  },
+  {
+    "result_id": "APP-005",
+    "evidence_id": "GBT50378-2019-020",
+    "clause_id": "GBT50378-2019-020",
+    "clause_no": "7.2.9",
+    "applicable_status": "needs_manual_review",
+    "confidence": 0.87,
+    "reason_codes": [
+      "REGION_MATCHED",
+      "BUILDING_TYPE_MATCHED",
+      "DESIGN_PHASE_MATCHED",
+      "GREEN_TARGET_SCOPE_MATCHED",
+      "PROJECT_SCOPE_MATCHED",
+      "MANUAL_REVIEW_REQUIRED"
+    ],
+    "project_matches": {
+      "region": true,
+      "building_type": true,
+      "design_phase": true,
+      "green_target_scope": true
+    },
+    "missing_facts": [],
+    "manual_review_required": true
+  },
+  {
+    "result_id": "APP-006",
+    "evidence_id": "GBT50378-2019-029",
+    "clause_id": "GBT50378-2019-029",
+    "clause_no": "9.1.1-9.1.2",
+    "applicable_status": "needs_manual_review",
+    "confidence": 0.87,
+    "reason_codes": [
+      "REGION_MATCHED",
+      "BUILDING_TYPE_MATCHED",
+      "DESIGN_PHASE_MATCHED",
+      "GREEN_TARGET_SCOPE_MATCHED",
+      "PROJECT_SCOPE_MATCHED",
+      "MANUAL_REVIEW_REQUIRED"
+    ],
+    "project_matches": {
+      "region": true,
+      "building_type": true,
+      "design_phase": true,
+      "green_target_scope": true
+    },
+    "missing_facts": [],
+    "manual_review_required": true
+  },
+  {
+    "result_id": "APP-007",
+    "evidence_id": "GBT50378-2019-031",
+    "clause_id": "GBT50378-2019-031",
+    "clause_no": "9.2.6-9.2.8",
+    "applicable_status": "needs_manual_review",
+    "confidence": 0.87,
+    "reason_codes": [
+      "REGION_MATCHED",
+      "BUILDING_TYPE_MATCHED",
+      "DESIGN_PHASE_MATCHED",
+      "GREEN_TARGET_SCOPE_MATCHED",
+      "PROJECT_SCOPE_MATCHED",
+      "MANUAL_REVIEW_REQUIRED"
+    ],
+    "project_matches": {
+      "region": true,
+      "building_type": true,
+      "design_phase": true,
+      "green_target_scope": true
+    },
+    "missing_facts": [],
+    "manual_review_required": true
+  },
+  {
+    "result_id": "APP-008",
+    "evidence_id": "GBT50378-2019-005",
+    "clause_id": "GBT50378-2019-005",
+    "clause_no": "表 3.2.8",
+    "applicable_status": "needs_manual_review",
+    "confidence": 0.87,
+    "reason_codes": [
+      "REGION_MATCHED",
+      "BUILDING_TYPE_MATCHED",
+      "DESIGN_PHASE_MATCHED",
+      "GREEN_TARGET_SCOPE_MATCHED",
+      "PROJECT_SCOPE_MATCHED",
+      "MANUAL_REVIEW_REQUIRED"
+    ],
+    "project_matches": {
+      "region": true,
+      "building_type": true,
+      "design_phase": true,
+      "green_target_scope": true
+    },
+    "missing_facts": [],
+    "manual_review_required": true
+  },
+  {
+    "result_id": "APP-009",
+    "evidence_id": "GBT50378-2019-007",
+    "clause_id": "GBT50378-2019-007",
+    "clause_no": "4.2.6-4.2.9",
+    "applicable_status": "needs_manual_review",
+    "confidence": 0.87,
+    "reason_codes": [
+      "REGION_MATCHED",
+      "BUILDING_TYPE_MATCHED",
+      "DESIGN_PHASE_MATCHED",
+      "GREEN_TARGET_SCOPE_MATCHED",
+      "PROJECT_SCOPE_MATCHED",
+      "MANUAL_REVIEW_REQUIRED"
+    ],
+    "project_matches": {
+      "region": true,
+      "building_type": true,
+      "design_phase": true,
+      "green_target_scope": true
+    },
+    "missing_facts": [],
+    "manual_review_required": true
+  },
+  {
+    "result_id": "APP-010",
+    "evidence_id": "GBT50378-2019-022",
+    "clause_id": "GBT50378-2019-022",
+    "clause_no": "7.2.14-7.2.18",
+    "applicable_status": "needs_manual_review",
+    "confidence": 0.87,
+    "reason_codes": [
+      "REGION_MATCHED",
+      "BUILDING_TYPE_MATCHED",
+      "DESIGN_PHASE_MATCHED",
+      "GREEN_TARGET_SCOPE_MATCHED",
+      "PROJECT_SCOPE_MATCHED",
+      "MANUAL_REVIEW_REQUIRED"
+    ],
+    "project_matches": {
+      "region": true,
+      "building_type": true,
+      "design_phase": true,
+      "green_target_scope": true
+    },
+    "missing_facts": [],
+    "manual_review_required": true
+  },
+  {
+    "result_id": "APP-011",
+    "evidence_id": "GBT50378-2019-023",
+    "clause_id": "GBT50378-2019-023",
+    "clause_no": "7.1.1-7.1.6",
+    "applicable_status": "needs_manual_review",
+    "confidence": 0.87,
+    "reason_codes": [
+      "REGION_MATCHED",
+      "BUILDING_TYPE_MATCHED",
+      "DESIGN_PHASE_MATCHED",
+      "GREEN_TARGET_SCOPE_MATCHED",
+      "PROJECT_SCOPE_MATCHED",
+      "MANUAL_REVIEW_REQUIRED"
+    ],
+    "project_matches": {
+      "region": true,
+      "building_type": true,
+      "design_phase": true,
+      "green_target_scope": true
+    },
+    "missing_facts": [],
+    "manual_review_required": true
+  },
+  {
+    "result_id": "APP-012",
+    "evidence_id": "GBT50378-2019-008",
+    "clause_id": "GBT50378-2019-008",
+    "clause_no": "5.2.1-5.2.2",
+    "applicable_status": "needs_manual_review",
+    "confidence": 0.87,
+    "reason_codes": [
+      "REGION_MATCHED",
+      "BUILDING_TYPE_MATCHED",
+      "DESIGN_PHASE_MATCHED",
+      "GREEN_TARGET_SCOPE_MATCHED",
+      "PROJECT_SCOPE_MATCHED",
+      "MANUAL_REVIEW_REQUIRED"
+    ],
+    "project_matches": {
+      "region": true,
+      "building_type": true,
+      "design_phase": true,
+      "green_target_scope": true
+    },
+    "missing_facts": [],
+    "manual_review_required": true
+  }
+]

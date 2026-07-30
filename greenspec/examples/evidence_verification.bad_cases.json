@@ -1,0 +1,211 @@
+[
+  {
+    "case_id": "BAD-001",
+    "description": "The top-level decision uses an undefined enum value.",
+    "expected_failure": "schema",
+    "payload": {
+      "verification_id": "VER-001",
+      "decision": "approve",
+      "summary": {
+        "claims_total": 1,
+        "supported": 1,
+        "partially_supported": 0,
+        "unsupported": 0,
+        "needs_manual_review": 0
+      },
+      "research_again_queries": [],
+      "items": [
+        {
+          "verification_id": "VER-CLAIM-001",
+          "claim_id": "CLAIM-001",
+          "claim": "The claim is supported.",
+          "status": "supported",
+          "evidence_ids": [
+            "GBT50378-2019-004"
+          ],
+          "required_source_levels": [
+            "T0"
+          ],
+          "actual_source_levels": [
+            "T0"
+          ],
+          "source_level_check": "pass",
+          "citation_check": {
+            "source_present": true,
+            "clause_no_present": true,
+            "page_present": true,
+            "version_present": true
+          },
+          "issues": [],
+          "recommended_action": "accept"
+        }
+      ]
+    }
+  },
+  {
+    "case_id": "BAD-002",
+    "description": "The item status uses a legacy value that is not allowed by the new protocol.",
+    "expected_failure": "schema",
+    "payload": {
+      "verification_id": "VER-002",
+      "decision": "revise",
+      "summary": {
+        "claims_total": 1,
+        "supported": 0,
+        "partially_supported": 1,
+        "unsupported": 0,
+        "needs_manual_review": 0
+      },
+      "research_again_queries": [],
+      "items": [
+        {
+          "verification_id": "VER-CLAIM-001",
+          "claim_id": "CLAIM-001",
+          "claim": "The claim is partially supported.",
+          "status": "weakly_supported",
+          "evidence_ids": [
+            "GBT50378-2019-004"
+          ],
+          "required_source_levels": [
+            "T0"
+          ],
+          "actual_source_levels": [
+            "T0"
+          ],
+          "source_level_check": "pass",
+          "citation_check": {
+            "source_present": true,
+            "clause_no_present": true,
+            "page_present": true,
+            "version_present": true
+          },
+          "issues": [],
+          "recommended_action": "revise"
+        }
+      ]
+    }
+  },
+  {
+    "case_id": "BAD-003",
+    "description": "The item is missing the required citation_check object.",
+    "expected_failure": "schema",
+    "payload": {
+      "verification_id": "VER-003",
+      "decision": "accept",
+      "summary": {
+        "claims_total": 1,
+        "supported": 1,
+        "partially_supported": 0,
+        "unsupported": 0,
+        "needs_manual_review": 0
+      },
+      "research_again_queries": [],
+      "items": [
+        {
+          "verification_id": "VER-CLAIM-001",
+          "claim_id": "CLAIM-001",
+          "claim": "The claim is supported.",
+          "status": "supported",
+          "evidence_ids": [
+            "GBT50378-2019-004"
+          ],
+          "required_source_levels": [
+            "T0"
+          ],
+          "actual_source_levels": [
+            "T0"
+          ],
+          "source_level_check": "pass",
+          "issues": [],
+          "recommended_action": "accept"
+        }
+      ]
+    }
+  },
+  {
+    "case_id": "BAD-004",
+    "description": "The summary counts do not equal claims_total.",
+    "expected_failure": "semantic",
+    "payload": {
+      "verification_id": "VER-004",
+      "decision": "accept",
+      "summary": {
+        "claims_total": 2,
+        "supported": 1,
+        "partially_supported": 0,
+        "unsupported": 0,
+        "needs_manual_review": 0
+      },
+      "research_again_queries": [],
+      "items": [
+        {
+          "verification_id": "VER-CLAIM-001",
+          "claim_id": "CLAIM-001",
+          "claim": "The claim is supported.",
+          "status": "supported",
+          "evidence_ids": [
+            "GBT50378-2019-004"
+          ],
+          "required_source_levels": [
+            "T0"
+          ],
+          "actual_source_levels": [
+            "T0"
+          ],
+          "source_level_check": "pass",
+          "citation_check": {
+            "source_present": true,
+            "clause_no_present": true,
+            "page_present": true,
+            "version_present": true
+          },
+          "issues": [],
+          "recommended_action": "accept"
+        }
+      ]
+    }
+  },
+  {
+    "case_id": "BAD-005",
+    "description": "The source level check says pass even though the required T0 source is absent.",
+    "expected_failure": "semantic",
+    "payload": {
+      "verification_id": "VER-005",
+      "decision": "accept",
+      "summary": {
+        "claims_total": 1,
+        "supported": 1,
+        "partially_supported": 0,
+        "unsupported": 0,
+        "needs_manual_review": 0
+      },
+      "research_again_queries": [],
+      "items": [
+        {
+          "verification_id": "VER-CLAIM-001",
+          "claim_id": "CLAIM-001",
+          "claim": "The claim is supported.",
+          "status": "supported",
+          "evidence_ids": [
+            "DOC-001"
+          ],
+          "required_source_levels": [
+            "T0"
+          ],
+          "actual_source_levels": [
+            "PROJECT"
+          ],
+          "source_level_check": "pass",
+          "citation_check": {
+            "source_present": true,
+            "clause_no_present": false,
+            "page_present": false,
+            "version_present": false
+          },
+          "issues": [],
+          "recommended_action": "accept"
+        }
+      ]
+    }
+  }
+]

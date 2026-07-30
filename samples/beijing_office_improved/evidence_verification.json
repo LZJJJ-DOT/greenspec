@@ -1,0 +1,99 @@
+{
+  "verification_id": "VER-001",
+  "decision": "accept",
+  "summary": {
+    "claims_total": 3,
+    "supported": 3,
+    "partially_supported": 0,
+    "unsupported": 0,
+    "needs_manual_review": 0
+  },
+  "research_again_queries": [],
+  "items": [
+    {
+      "verification_id": "VER-CLAIM-001",
+      "claim_id": "CLAIM-001",
+      "claim": "本项目可先按北京普通办公楼方案/初设阶段进行绿色建筑二星级预审，并对三星级目标做差距分析。",
+      "status": "supported",
+      "evidence_ids": [
+        "GBT50378-2019-004",
+        "GBT50378-2019-003",
+        "GBT50378-2019-018",
+        "DOC-001"
+      ],
+      "required_source_levels": [
+        "T0",
+        "PROJECT"
+      ],
+      "actual_source_levels": [
+        "T0",
+        "PROJECT"
+      ],
+      "source_level_check": "pass",
+      "citation_check": {
+        "source_present": true,
+        "clause_no_present": true,
+        "page_present": true,
+        "version_present": true
+      },
+      "issues": [],
+      "recommended_action": "accept"
+    },
+    {
+      "verification_id": "VER-CLAIM-002",
+      "claim_id": "CLAIM-002",
+      "claim": "系统应结合本地条文、联网研究和项目资料开展绿色建筑预审分析",
+      "status": "supported",
+      "evidence_ids": [
+        "GBT50378-2019-004",
+        "GBT50378-2019-003",
+        "GBT50378-2019-018",
+        "WEB-C91C4A5FFDEF",
+        "WEB-4A95671CE15D",
+        "DOC-001"
+      ],
+      "required_source_levels": [
+        "T1",
+        "T2"
+      ],
+      "actual_source_levels": [
+        "T0",
+        "T1",
+        "PROJECT"
+      ],
+      "source_level_check": "pass",
+      "citation_check": {
+        "source_present": true,
+        "clause_no_present": true,
+        "page_present": true,
+        "version_present": true
+      },
+      "issues": [],
+      "recommended_action": "accept"
+    },
+    {
+      "verification_id": "VER-CLAIM-003",
+      "claim_id": "CLAIM-003",
+      "claim": "当前项目存在资料缺口，不能直接给出三星级达标结论。",
+      "status": "supported",
+      "evidence_ids": [
+        "DOC-001"
+      ],
+      "required_source_levels": [
+        "PROJECT"
+      ],
+      "actual_source_levels": [
+        "PROJECT"
+      ],
+      "source_level_check": "pass",
+      "citation_check": {
+        "source_present": true,
+        "clause_no_present": true,
+        "page_present": true,
+        "version_present": true
+      },
+      "issues": [],
+      "recommended_action": "accept"
+    }
+  ]
+}

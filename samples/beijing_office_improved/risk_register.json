@@ -1,0 +1,57 @@
+[
+  {
+    "risk_id": "RISK-001",
+    "risk_level": "P2",
+    "title": "Project information is incomplete",
+    "description": "The project profile contains missing fields or unconfirmed parameters: 采光模拟结果, 绿色建材比例, has_daylight_simulation_result, green_material_ratio",
+    "trigger_clause_ids": [],
+    "trigger_gap_ids": [
+      "GAP-001",
+      "GAP-002",
+      "GAP-003",
+      "GAP-004"
+    ],
+    "impact": "The analysis remains usable as a preliminary screen, but completeness and credibility are reduced.",
+    "mitigation": "Provide the missing project facts and confirm all false known_parameters before final review.",
+    "next_action": "request_project_documents",
+    "evidence_refs": []
+  },
+  {
+    "risk_id": "RISK-002",
+    "risk_level": "P2",
+    "title": "Manual review is required for applicable clauses",
+    "description": "Some clauses are applicable or potentially applicable, but they require human review because of professional judgment boundaries, missing facts, or clause-level review requirements.",
+    "trigger_clause_ids": [
+      "GBT50378-2019-004",
+      "GBT50378-2019-003",
+      "GBT50378-2019-018",
+      "GBT50378-2019-019",
+      "GBT50378-2019-020",
+      "GBT50378-2019-029",
+      "GBT50378-2019-031",
+      "GBT50378-2019-005",
+      "GBT50378-2019-007",
+      "GBT50378-2019-022",
+      "GBT50378-2019-023",
+      "GBT50378-2019-008"
+    ],
+    "trigger_gap_ids": [],
+    "impact": "The automated result can be used as a precheck aid, but cannot be treated as a final review conclusion.",
+    "mitigation": "Assign qualified reviewers to verify clause applicability, calculation assumptions, and evidence sufficiency.",
+    "next_action": "perform_manual_review",
+    "evidence_refs": [
+      "GBT50378-2019-004",
+      "GBT50378-2019-003",
+      "GBT50378-2019-018",
+      "GBT50378-2019-019",
+      "GBT50378-2019-020",
+      "GBT50378-2019-029",
+      "GBT50378-2019-031",
+      "GBT50378-2019-005",
+      "GBT50378-2019-007",
+      "GBT50378-2019-022",
+      "GBT50378-2019-023",
+      "GBT50378-2019-008"
+    ]
+  }
+]

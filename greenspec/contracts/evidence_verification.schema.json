@@ -1,0 +1,223 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://greenspec.local/contracts/evidence_verification.schema.json",
+  "title": "GreenSpec Evidence Verification",
+  "description": "Verification result for claims and their supporting evidence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "verification_id",
+    "decision",
+    "summary",
+    "research_again_queries",
+    "items"
+  ],
+  "properties": {
+    "verification_id": {
+      "type": "string",
+      "pattern": "^VER-[0-9]{3,}$"
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "accept",
+        "revise",
+        "research_again"
+      ]
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claims_total",
+        "supported",
+        "partially_supported",
+        "unsupported",
+        "needs_manual_review"
+      ],
+      "properties": {
+        "claims_total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "supported": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "partially_supported": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unsupported": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "needs_manual_review": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "research_again_queries": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/verificationItem"
+      }
+    },
+    "project_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "run_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "generated_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "$defs": {
+    "verificationItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "verification_id",
+        "claim_id",
+        "claim",
+        "status",
+        "evidence_ids",
+        "required_source_levels",
+        "actual_source_levels",
+        "source_level_check",
+        "citation_check",
+        "issues",
+        "recommended_action"
+      ],
+      "properties": {
+        "verification_id": {
+          "type": "string",
+          "pattern": "^VER-CLAIM-[0-9]{3,}$"
+        },
+        "claim_id": {
+          "type": "string",
+          "pattern": "^CLAIM-[0-9]{3,}$"
+        },
+        "claim": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "supported",
+            "partially_supported",
+            "unsupported",
+            "needs_manual_review"
+          ]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required_source_levels": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "T0",
+              "T0_CANDIDATE",
+              "T1",
+              "T2",
+              "T3",
+              "T1_T2_T3_UNCLASSIFIED",
+              "PROJECT"
+            ]
+          }
+        },
+        "actual_source_levels": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "T0",
+              "T0_CANDIDATE",
+              "T1",
+              "T2",
+              "T3",
+              "T1_T2_T3_UNCLASSIFIED",
+              "PROJECT"
+            ]
+          }
+        },
+        "source_level_check": {
+          "type": "string",
+          "enum": [
+            "pass",
+            "fail",
+            "needs_manual_review"
+          ]
+        },
+        "citation_check": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source_present",
+            "clause_no_present",
+            "page_present",
+            "version_present"
+          ],
+          "properties": {
+            "source_present": {
+              "type": "boolean"
+            },
+            "clause_no_present": {
+              "type": "boolean"
+            },
+            "page_present": {
+              "type": "boolean"
+            },
+            "version_present": {
+              "type": "boolean"
+            }
+          }
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "recommended_action": {
+          "type": "string",
+          "enum": [
+            "accept",
+            "revise",
+            "research_again"
+          ]
+        }
+      }
+    }
+  }
+}

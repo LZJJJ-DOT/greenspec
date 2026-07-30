@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://greenspec.local/contracts/risk_register.schema.json",
+  "title": "GreenSpec Risk Register",
+  "description": "One record represents one risk identified from applicability results, evidence, project gaps, or required calculations.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "risk_id",
+      "risk_level",
+      "title",
+      "description",
+      "trigger_clause_ids",
+      "trigger_gap_ids",
+      "impact",
+      "mitigation",
+      "next_action",
+      "evidence_refs"
+    ],
+    "properties": {
+      "risk_id": {
+        "type": "string",
+        "pattern": "^RISK-[0-9]{3,}$"
+      },
+      "risk_level": {
+        "type": "string",
+        "enum": [
+          "P0",
+          "P1",
+          "P2",
+          "P3"
+        ]
+      },
+      "title": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": {
+        "type": "string",
+        "minLength": 1
+      },
+      "trigger_clause_ids": {
+        "type": "array",
+        "minItems": 0,
+        "items": {
+          "type": "string"
+        }
+      },
+      "trigger_gap_ids": {
+        "type": "array",
+        "minItems": 0,
+        "items": {
+          "type": "string"
+        }
+      },
+      "impact": {
+        "type": "string",
+        "minLength": 1
+      },
+      "mitigation": {
+        "type": "string",
+        "minLength": 1
+      },
+      "next_action": {
+        "type": "string",
+        "minLength": 1
+      },
+      "evidence_refs": {
+        "type": "array",
+        "minItems": 0,
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
