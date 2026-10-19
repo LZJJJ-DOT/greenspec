@@ -146,3 +146,43 @@ def test_comparison_shows_actual_gap_and_review_changes():
     assert "待人工复核条文：8 → 7" in rendered
     assert "本次不再出现：采光模拟结果" in rendered
     assert "run-before" in rendered and "run-after" in rendered
+
+
+def test_launch_reuses_running_demo(monkeypatch, capsys):
+    from multi_agents import demo_app
+
+    class Response:
+        status_code = 200
+
+        def json(self):
+            return {"title": "GreenSpec 绿建预审演示"}
+
+    opened = []
+    monkeypatch.setattr(demo_app.requests, "get", lambda *_a, **_k: Response())
+    monkeypatch.setattr(demo_app.webbrowser, "open", opened.append)
+    monkeypatch.setattr(demo_app, "create_app", lambda: pytest.fail("duplicate server started"))
+
+    demo_app.launch_demo()
+
+    assert opened == ["http://127.0.0.1:7860/"]
+    assert "已在运行" in capsys.readouterr().out
+
+
+def test_launch_respects_port_override(monkeypatch):
+    from multi_agents import demo_app
+
+    class FakeApp:
+        def queue(self, **_kwargs):
+            return self
+
+        def launch(self, **kwargs):
+            observed.update(kwargs)
+
+    observed = {}
+    monkeypatch.setenv("GRADIO_SERVER_PORT", "7861")
+    monkeypatch.setattr(demo_app.requests, "get", lambda *_a, **_k: (_ for _ in ()).throw(ValueError()))
+    monkeypatch.setattr(demo_app, "create_app", FakeApp)
+
+    demo_app.launch_demo()
+
+    assert observed["server_port"] == 7861

@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
+import webbrowser
 from pathlib import Path
 
 import gradio as gr
+import requests
 
 from multi_agents.demo_config import (
     DEFAULT_AS_OF_DATE, DemoInput, DemoInputError, FACT_FIELDS, PRESET_PATHS,
@@ -238,14 +241,47 @@ def create_app() -> gr.Blocks:
     return app
 
 
+def launch_demo() -> None:
+    """Start the local UI or reuse one already listening on the chosen port."""
+    raw_port = os.getenv("GRADIO_SERVER_PORT", "7860")
+    try:
+        port = int(raw_port)
+        if not 1 <= port <= 65535:
+            raise ValueError
+    except ValueError as exc:
+        raise SystemExit("GRADIO_SERVER_PORT 必须是 1 到 65535 之间的端口号") from exc
+
+    url = f"http://127.0.0.1:{port}/"
+    try:
+        response = requests.get(f"{url}config", timeout=2)
+        already_running = (
+            response.status_code == 200
+            and response.json().get("title") == "GreenSpec 绿建预审演示"
+        )
+    except (requests.RequestException, ValueError):
+        already_running = False
+    if already_running:
+        print(f"GreenSpec 演示页面已在运行：{url}")
+        webbrowser.open(url)
+        return
+
+    try:
+        create_app().queue(default_concurrency_limit=1).launch(
+            server_name="127.0.0.1", server_port=port, share=False,
+            inbrowser=True,
+            allowed_paths=[str((Path(__file__).resolve().parents[1] / "outputs").resolve())],
+        )
+    except OSError as exc:
+        raise SystemExit(
+            f"端口 {port} 已被其他程序占用。可设置 "
+            "`$env:GRADIO_SERVER_PORT = '7861'` 后重试，并访问相应端口。"
+        ) from exc
+
+
 if __name__ == "__main__":
     # The upstream streaming LLM provider prints generated text. Windows may
     # otherwise use GBK and retry a successful request on an encoding error.
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8", errors="replace")
-    app = create_app()
-    app.queue(default_concurrency_limit=1).launch(
-        server_name="127.0.0.1", server_port=7860, share=False,
-        inbrowser=True, allowed_paths=[str((Path(__file__).resolve().parents[1] / "outputs").resolve())],
-    )
+    launch_demo()
