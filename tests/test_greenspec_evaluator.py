@@ -200,3 +200,79 @@ def test_evaluate_returns_failed_status(
 
     assert result["status"] == "failed"
     assert result["failed"] == 1
+
+
+def test_local_clause_count_accepts_greenspec_rag():
+    context = {
+        "evidence_pack": {
+            "evidence_items": [
+                {
+                    "channel": "greenspec_rag",
+                    "evidence_id": "GB50378-2019:3.2.6",
+                }
+            ]
+        }
+    }
+
+    passed, details = (
+        make_evaluator()
+        ._check_local_clause_count(context, {"min": 1})
+    )
+
+    assert passed is True
+    assert details == "local_clause_count=1"
+
+
+def test_expected_clause_hit_maps_legacy_id_to_canonical_greenspec():
+    context = {
+        "evidence_pack": {
+            "evidence_items": [
+                {
+                    "channel": "greenspec_rag",
+                    "evidence_id": "GB50378-2019:3.2.8",
+                    "source_id": "GB_T_50378_2019",
+                    "clause_no": "3.2.8",
+                    "metadata": {
+                        "clause_id": "GB50378-2019:3.2.8",
+                    },
+                }
+            ]
+        }
+    }
+
+    passed, details = (
+        make_evaluator()
+        ._check_expected_clause_hit(
+            context,
+            {"expected_any": ["GBT50378-2019-004"]},
+        )
+    )
+
+    assert passed is True
+    assert "GBT50378-2019-004" in details
+
+
+def test_expected_clause_hit_does_not_accept_unrelated_greenspec():
+    context = {
+        "evidence_pack": {
+            "evidence_items": [
+                {
+                    "channel": "greenspec_rag",
+                    "evidence_id": "GB50378-2019:3.1.3",
+                    "source_id": "GB_T_50378_2019",
+                    "clause_no": "3.1.3",
+                }
+            ]
+        }
+    }
+
+    passed, details = (
+        make_evaluator()
+        ._check_expected_clause_hit(
+            context,
+            {"expected_any": ["GBT50378-2019-004"]},
+        )
+    )
+
+    assert passed is False
+    assert details == "matched_clause_ids=[]"

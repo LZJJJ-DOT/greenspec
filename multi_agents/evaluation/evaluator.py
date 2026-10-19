@@ -7,6 +7,14 @@ from typing import Any, Dict, List, Tuple
 class GreenSpecEvaluator:
     """Runs deterministic evaluations against one output directory."""
 
+    # ``local_clause`` is the original local-knowledge-base channel.  The
+    # GreenSpec adapter emits the same kind of normative evidence under the
+    # more explicit ``greenspec_rag`` channel.
+    LOCAL_CLAUSE_CHANNELS = frozenset({
+        "local_clause",
+        "greenspec_rag",
+    })
+
     def __init__(self, cases_path: str | Path):
         self.cases_path = Path(cases_path)
 
@@ -228,11 +236,7 @@ class GreenSpecEvaluator:
             context: Dict[str, Any],
             params: Dict[str, Any],
     ) -> Tuple[bool, str]:
-        evidence = self._evidence_items(context)
-        local_items = [
-            item for item in evidence
-            if item.get("channel") == "local_clause"
-        ]
+        local_items = self._local_clause_items(context)
 
         minimum = int(params.get("min", 1))
 
@@ -246,17 +250,21 @@ class GreenSpecEvaluator:
             context: Dict[str, Any],
             params: Dict[str, Any],
     ) -> Tuple[bool, str]:
-        evidence = self._evidence_items(context)
+        actual_ids = set()
 
-        actual_ids = {
-            (
-                    item.get("metadata", {})
-                    or {}
-            ).get("clause_id")
-            or item.get("evidence_id")
-            for item in evidence
-            if item.get("channel") == "local_clause"
-        }
+        for item in self._local_clause_items(context):
+            metadata = item.get("metadata", {}) or {}
+            clause_id = (
+                    metadata.get("clause_id")
+                    or item.get("evidence_id")
+            )
+
+            if clause_id:
+                actual_ids.add(str(clause_id))
+
+            actual_ids.update(
+                self._legacy_greenspec_clause_aliases(item)
+            )
 
         expected = set(
             params.get("expected_any", [])
@@ -604,6 +612,62 @@ class GreenSpecEvaluator:
                 context.get("evidence_pack", {})
                 .get("evidence_items", [])
                 or []
+        )
+
+    def _local_clause_items(
+            self,
+            context: Dict[str, Any],
+    ) -> List[Dict[str, Any]]:
+        return [
+            item
+            for item in self._evidence_items(context)
+            if item.get("channel") in self.LOCAL_CLAUSE_CHANNELS
+        ]
+
+    def _legacy_greenspec_clause_aliases(
+            self,
+            item: Dict[str, Any],
+    ) -> set[str]:
+        """Map the three legacy GB/T 50378 eval IDs to canonical evidence.
+
+        The old fixture grouped 3.2.6--3.2.8 under one ID and used a
+        separate ID for table 3.2.8.  GreenSpec keeps the canonical clause
+        and table identifiers, so only these documented equivalences are
+        accepted; unrelated GreenSpec evidence is never treated as a hit.
+        """
+        if item.get("channel") != "greenspec_rag":
+            return set()
+
+        source_id = self._normalise_standard_id(
+            item.get("source_id")
+        )
+        if source_id != "GBT503782019":
+            return set()
+
+        aliases = set()
+        clause_no = str(item.get("clause_no") or "").strip()
+        metadata = item.get("metadata", {}) or {}
+        canonical_id = str(
+            metadata.get("clause_id")
+            or item.get("evidence_id")
+            or ""
+        ).lower()
+
+        if clause_no == "3.2.5":
+            aliases.add("GBT50378-2019-003")
+        if clause_no in {"3.2.6", "3.2.7", "3.2.8"}:
+            aliases.add("GBT50378-2019-004")
+        if "table-3.2.8" in canonical_id:
+            aliases.add("GBT50378-2019-005")
+
+        return aliases
+
+    @staticmethod
+    def _normalise_standard_id(value: Any) -> str:
+        return "".join(
+            character
+            for character in str(value or "").upper()
+            if character.isalnum()
         )
 
     def _web_items(

@@ -1,6 +1,7 @@
 from gpt_researcher import GPTResearcher
 from colorama import Fore, Style
 from .utils.views import print_agent_output
+from ..evidence.web_evidence_ledger import build_records
 
 
 class ResearchAgent:
@@ -53,6 +54,19 @@ class ResearchAgent:
             await self.stream_output("logs", "depth_research", f"Running in depth research on the following report topic: {topic}", self.websocket)
         else:
             print_agent_output(f"Running in depth research on the following report topic: {topic}", agent="RESEARCHER")
-        research_draft = await self.run_subtopic_research(parent_query=parent_query, subtopic=topic,
-                                                          verbose=verbose, source=source, headers=self.headers)
-        return {"draft": research_draft}
+        researcher = GPTResearcher(
+            query=topic,
+            report_type="subtopic_report",
+            parent_query=parent_query,
+            verbose=verbose,
+            report_source=source,
+            tone=self.tone,
+            websocket=self.websocket,
+            headers=self.headers,
+        )
+        await researcher.conduct_research()
+        report = await researcher.write_report()
+        return {
+            "draft": {topic: report},
+            "web_evidence_ledger": build_records(researcher.get_research_sources()),
+        }

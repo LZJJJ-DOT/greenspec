@@ -12,6 +12,13 @@ def build_claim(evidence_ids):
             "T0",
         ],
         "supporting_evidence_ids": evidence_ids,
+        "evidence_spans": [
+            {
+                "evidence_id": evidence_id,
+                "quote": "绿色建筑等级",
+            }
+            for evidence_id in evidence_ids
+        ],
     }
 
 
@@ -137,3 +144,19 @@ def test_complete_verified_t0_is_supported():
     }
     assert item["issues"] == []
     assert verification["decision"] == "accept"
+
+
+def test_unresolvable_evidence_quote_requires_revision():
+    evidence = build_evidence()
+    claim = build_claim([evidence["evidence_id"]])
+    claim["evidence_spans"][0]["quote"] = "不存在的原文"
+
+    verification, item = verify_one(
+        claim=claim,
+        evidence_items=[evidence],
+    )
+
+    assert item["status"] == "partially_supported"
+    assert item["recommended_action"] == "revise"
+    assert "ISSUE_EVIDENCE_QUOTE_NOT_FOUND: GBT50378-2019-004" in item["issues"]
+    assert verification["decision"] == "revise"

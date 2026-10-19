@@ -1,0 +1,17 @@
+{
+  "schema_version": "greenspec.claim_set.v1",
+  "evidence_pack_id": "pack_example",
+  "claims": [
+    {
+      "claim_id": "CLAIM-001",
+      "claim": "项目应在资料齐备后开展绿色建筑预审。",
+      "claim_use": "precheck_conclusion",
+      "required_source_levels": ["T0", "PROJECT"],
+      "supporting_evidence_ids": ["EVIDENCE-001", "PROJECT-001"],
+      "evidence_spans": [
+        {"evidence_id": "EVIDENCE-001", "quote": "绿色建筑评价应"},
+        {"evidence_id": "PROJECT-001", "quote": "项目资料"}
+      ]
+    }
+  ]
+}

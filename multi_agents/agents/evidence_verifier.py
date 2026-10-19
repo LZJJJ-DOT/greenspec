@@ -161,6 +161,12 @@ class EvidenceVerifier:
                 recommended_action=self.ACTION_RESEARCH_AGAIN,
             )
 
+        span_issues = self._check_evidence_spans(
+            claim=claim,
+            evidence_by_id=evidence_by_id,
+            evidence_ids=evidence_ids,
+        )
+
         source_check, qualifying_evidence, source_issues = (
             self._check_source_levels(
                 claim_use=claim_use,
@@ -181,7 +187,12 @@ class EvidenceVerifier:
             requires_url=claim_use == "policy_context",
         )
 
-        issues = configuration_issues + source_issues + citation_issues
+        issues = (
+            configuration_issues
+            + span_issues
+            + source_issues
+            + citation_issues
+        )
 
         if source_check == self.SOURCE_FAIL:
             return self._build_item(
@@ -216,7 +227,7 @@ class EvidenceVerifier:
                 recommended_action=self.ACTION_REVISE,
             )
 
-        if citation_issues:
+        if citation_issues or span_issues:
             return self._build_item(
                 index=index,
                 claim_id=claim_id,
@@ -358,7 +369,7 @@ class EvidenceVerifier:
 
         if source_level == "T0":
             return bool(
-                item.get("channel") == "local_clause"
+                item.get("channel") in {"local_clause", "greenspec_rag"}
                 and actual_level == "T0"
                 and (
                         not requires_verified_t0
@@ -367,6 +378,55 @@ class EvidenceVerifier:
             )
 
         return actual_level == source_level
+
+    def _check_evidence_spans(
+            self,
+            claim: Dict[str, Any],
+            evidence_by_id: Dict[str, Dict[str, Any]],
+            evidence_ids: List[str],
+    ) -> List[str]:
+        """Require an exact, locally resolvable quote for every cited ID.
+
+        This does not attempt semantic entailment.  It prevents an agent from
+        attaching a valid-looking evidence ID without showing the source span
+        it relied on, and keeps that span independently reviewable.
+        """
+        spans = claim.get("evidence_spans")
+        if not isinstance(spans, list):
+            return ["ISSUE_EVIDENCE_SPANS_MISSING"]
+
+        quote_by_id: Dict[str, str] = {}
+        issues = []
+        for span in spans:
+            if not isinstance(span, dict):
+                issues.append("ISSUE_EVIDENCE_SPAN_INVALID")
+                continue
+            evidence_id = span.get("evidence_id")
+            quote = str(span.get("quote") or "").strip()
+            if not evidence_id or not quote:
+                issues.append("ISSUE_EVIDENCE_SPAN_INVALID")
+                continue
+            if evidence_id in quote_by_id:
+                issues.append(f"ISSUE_EVIDENCE_SPAN_DUPLICATE: {evidence_id}")
+                continue
+            quote_by_id[str(evidence_id)] = quote
+
+        cited = set(evidence_ids)
+        for evidence_id in cited:
+            quote = quote_by_id.get(evidence_id)
+            content = str(
+                evidence_by_id.get(evidence_id, {}).get("content")
+                or ""
+            )
+            if not quote:
+                issues.append(f"ISSUE_EVIDENCE_SPAN_MISSING: {evidence_id}")
+            elif quote not in content:
+                issues.append(f"ISSUE_EVIDENCE_QUOTE_NOT_FOUND: {evidence_id}")
+
+        for evidence_id in quote_by_id:
+            if evidence_id not in cited:
+                issues.append(f"ISSUE_EVIDENCE_SPAN_NOT_CITED: {evidence_id}")
+        return self._unique(issues)
 
     def _has_candidate_source(
             self,
@@ -413,7 +473,10 @@ class EvidenceVerifier:
             local_clause_evidence = [
                 item
                 for item in evidence_items
-                if item.get("channel") == "local_clause"
+                if item.get("channel") in {
+                    "local_clause",
+                    "greenspec_rag",
+                }
             ]
 
             clause_no_present = bool(local_clause_evidence) and all(

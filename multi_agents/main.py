@@ -59,7 +59,6 @@ def open_task():
     required_fields = [
         "query",
         "project_profile_path",
-        "local_clause_path",
         "project_doc_path",
     ]
 
@@ -68,6 +67,14 @@ def open_task():
         for field in required_fields
         if not task.get(field)
     ]
+
+    if not task.get("local_clause_path") and not (
+            task.get("greenspec_rag_url")
+            and task.get("greenspec_retrieve_request")
+    ):
+        missing_fields.append(
+            "local_clause_path or greenspec_rag_url + greenspec_retrieve_request"
+        )
 
     if missing_fields:
         raise ValueError(

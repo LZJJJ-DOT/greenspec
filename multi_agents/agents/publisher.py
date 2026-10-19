@@ -72,6 +72,23 @@ class PublisherAgent:
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(evidence_pack, f, ensure_ascii=False, indent=2)
 
+    async def write_web_evidence_ledger(self, research_state: dict):
+        ledger = research_state.get("web_evidence_ledger")
+        if ledger is None:
+            return
+
+        output_path = os.path.join(self.output_dir, "web_evidence_ledger.json")
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "schema_version": "gpt_researcher.web_evidence_ledger.v1",
+                    "records": ledger,
+                },
+                f,
+                ensure_ascii=False,
+                indent=2,
+            )
+
     async def write_applicability_results(self, research_state: dict):
         applicability_results = research_state.get("applicability_results")
         if applicability_results is None:
@@ -129,6 +146,7 @@ class PublisherAgent:
         else:
             print_agent_output(output="Publishing final research report based on retrieved data...", agent="PUBLISHER")
         await self.write_evidence_pack(research_state)
+        await self.write_web_evidence_ledger(research_state)
         await self.write_applicability_results(research_state)
         await self.write_risk_register(research_state)
         await self.write_evidence_verification(research_state)

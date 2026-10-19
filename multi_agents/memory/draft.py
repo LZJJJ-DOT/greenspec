@@ -9,3 +9,4 @@ class DraftState(TypedDict):
     review: str
     revision_notes: str
     revision_count: int
+    web_evidence_ledger: List[dict]

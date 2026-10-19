@@ -7,6 +7,7 @@ class ResearchState(TypedDict):
     initial_research: str
     sections: List[str]
     research_data: List[dict]
+    web_evidence_ledger: List[dict]
     human_feedback: str
     # Report layout
     title: str
@@ -26,5 +27,4 @@ class ResearchState(TypedDict):
     research_again_count: int
     evaluation: dict
     evaluation_status: str
-
 

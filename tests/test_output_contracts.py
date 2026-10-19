@@ -41,6 +41,17 @@ CONTRACT_CASES = [
         / "examples"
         / "evidence_verification.example.json",
     ),
+    (
+        "claim_set",
+        ROOT_DIR
+        / "greenspec"
+        / "contracts"
+        / "claim_set.schema.json",
+        ROOT_DIR
+        / "greenspec"
+        / "examples"
+        / "claim_set.example.json",
+    ),
 ]
 
 

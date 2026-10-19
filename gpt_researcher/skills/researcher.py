@@ -790,7 +790,10 @@ class ResearchConductor:
                 # Separate results that already have content from those needing scraping
                 for result in search_results:
                     url = result.get("href") or result.get("url")
-                    raw_content = result.get("raw_content") or result.get("body")
+                    # `body` is commonly a search snippet (including Tavily),
+                    # not a successfully extracted page.  Only an explicit
+                    # raw_content field may bypass the configured scraper.
+                    raw_content = result.get("raw_content")
                     if url and raw_content and len(raw_content) > 100:
                         # Retriever already fetched full content (e.g. PubMed Central)
                         prefetched_content.append({
@@ -1019,4 +1022,3 @@ class ResearchConductor:
                     "progress": progress
                 }
             )
-

@@ -1,6 +1,5 @@
 import json
 import hashlib
-import re
 from urllib.parse import urlparse
 from pathlib import Path
 from typing import Any, Dict, List
@@ -10,16 +9,15 @@ from .local_clause_retriever import LocalClauseRetriever
 from .applicability_judge import ApplicabilityJudge
 from .risk_gap_analyst import RiskGapAnalyst
 from .evidence_verifier import EvidenceVerifier
+from .claim_contract import claim_set
+from .greenspec_evidence_pack import adapt_items as adapt_greenspec_items, fetch_evidence_pack
+from ..evidence.web_evidence_ledger import is_verified_record
 
 
 
 
 class EvidenceSupervisorAgent:
     """Collects local clauses, web research, and project documents into an evidence pack."""
-    URL_PATTERN = re.compile(
-        r"https?://[^\s\]\[()<>{}\"']+"
-    )
-
     T1_DOMAINS = {
         "gov.cn",
     }
@@ -34,25 +32,6 @@ class EvidenceSupervisorAgent:
         "nrdc.org",
         "bsria.com",
     }
-
-    def _extract_urls(self, content: str) -> List[str]:
-        urls = []
-        seen = set()
-
-        for match in self.URL_PATTERN.findall(
-                content or ""
-        ):
-            url = match.rstrip(
-                ".,;:!?，。；：！？"
-            )
-
-            if url in seen:
-                continue
-
-            seen.add(url)
-            urls.append(url)
-
-        return urls
 
     def _host_matches(
             self,
@@ -107,25 +86,6 @@ class EvidenceSupervisorAgent:
             0.4,
         )
 
-    def _url_context(
-            self,
-            content: str,
-            url: str,
-            limit: int = 1200,
-    ) -> str:
-        position = content.find(url)
-
-        if position < 0:
-            return content[:limit]
-
-        start = max(0, position - 500)
-        end = min(
-            len(content),
-            position + len(url) + 500,
-            )
-
-        return content[start:end]
-
     def __init__(
             self,
             websocket=None,
@@ -153,6 +113,7 @@ class EvidenceSupervisorAgent:
         )
 
         research_data = research_state.get("research_data", []) or []
+        web_evidence_ledger = research_state.get("web_evidence_ledger", []) or []
         sections = research_state.get("sections", []) or []
         query = task.get("query", "")
         #因为 LangGraph 每个节点都会接收 research_state，然后返回新增状态，所以这里然后读取你准备好的三个文件：beijing_office_demo.json/clauses.jsonl/beijing_office_demo.md
@@ -165,7 +126,7 @@ class EvidenceSupervisorAgent:
         )
         local_clause_path = self._resolve_path(
             task.get("local_clause_path"),
-            required=True,
+            required=not bool(task.get("greenspec_rag_url")),
             field_name="local_clause_path",
         )
         project_doc = self._load_text(
@@ -173,20 +134,31 @@ class EvidenceSupervisorAgent:
             required=True,
         )
 
-        local_clause_evidence = (
-            self._retrieve_local_clause_evidence(
+        upstream_evidence_pack = None
+        if task.get("greenspec_rag_url"):
+            retrieve_request = task.get("greenspec_retrieve_request")
+            if not isinstance(retrieve_request, dict):
+                raise ValueError(
+                    "greenspec_retrieve_request must be a complete GreenSpec /v1/retrieve request object"
+                )
+            upstream_evidence_pack = fetch_evidence_pack(
+                base_url=str(task["greenspec_rag_url"]),
+                retrieve_request=retrieve_request,
+                timeout_seconds=float(task.get("greenspec_timeout_seconds", 30)),
+            )
+            local_clause_evidence = adapt_greenspec_items(upstream_evidence_pack)
+        else:
+            local_clause_evidence = self._retrieve_local_clause_evidence(
                 local_clause_path=local_clause_path,
                 query=query,
                 sections=sections,
                 project_profile=project_profile,
                 top_k=12,
             )
-        )
 
         web_policy_evidence = (
             self._collect_web_policy_evidence(
-                research_data=research_data,
-                sections=sections,
+                ledger_records=web_evidence_ledger,
                 top_k=12,
             )
         )
@@ -229,16 +201,21 @@ class EvidenceSupervisorAgent:
         )
 
         evidence_pack = {
+            "schema_version": "gpt_researcher.evidence_pack.v1",
             "query": query,
             "project_profile": project_profile,
+            "upstream_evidence_pack": upstream_evidence_pack,
             "channels": {
                 "local_clause": {
                     "enabled": bool(local_clause_evidence),
-                    "description": "Local clause knowledge base, used as candidate authoritative clause evidence."
+                    "description": (
+                        "GreenSpec evidence_pack.v1" if upstream_evidence_pack
+                        else "Local clause knowledge base, used as candidate authoritative clause evidence."
+                    )
                 },
                 "web_policy": {
                     "enabled": bool(web_policy_evidence),
-                    "description": "Web research output produced by GPT Researcher."
+                    "description": "Successfully fetched pages recorded in WebEvidenceLedger v1."
                 },
                 "project_doc": {
                     "enabled": bool(project_doc),
@@ -256,6 +233,13 @@ class EvidenceSupervisorAgent:
                 "Project document facts should be confirmed by human reviewers."
             ]
         }
+        evidence_pack["claim_set"] = claim_set(
+            evidence_pack_id=str(
+                (upstream_evidence_pack or {}).get("evidence_pack_id")
+                or f"internal_{research_again_count}"
+            ),
+            claims=claims,
+        )
 
 
         risk_register = await self._run_component(
@@ -479,73 +463,48 @@ class EvidenceSupervisorAgent:
 
     def _collect_web_policy_evidence(
             self,
-            research_data: List[Any],
-            sections: List[str],
+            ledger_records: List[Dict[str, Any]],
             top_k: int = 12,
     ) -> List[Dict[str, Any]]:
+        """Adapt only successful scraper records; never parse LLM report text."""
         evidence_items = []
         seen_urls = set()
 
-        flattened = self._flatten_research_data(research_data)
-
-        if not flattened:
-            return evidence_items
-
-        for index, item in enumerate(flattened, start=1):
-            topic = (
-                    item.get("topic")
-                    or self._guess_section(index, sections)
-            )
-            content = item.get("content", "")
-
-            # 先从完整研究内容提取 URL，不能从截断后的 content 提取。
-            urls = self._extract_urls(content)
-
-            for url in urls:
-                if url in seen_urls:
-                    continue
-
-                seen_urls.add(url)
-
-                source_level, classification_reason, confidence = (
-                    self._classify_web_source(url)
-                )
-
-                host = (
-                        urlparse(url).hostname
-                        or topic
-                ).lower()
-
-                digest = hashlib.sha256(
-                    url.encode("utf-8")
-                ).hexdigest()[:12].upper()
-
-                evidence_items.append({
-                    "evidence_id": f"WEB-{digest}",
-                    "channel": "web_policy",
-                    "source_level": source_level,
-                    "source_name": host,
-                    "source_id": url,
-                    "clause_no": None,
-                    "page": None,
-                    "url": url,
-                    "content": self._url_context(
-                        content=content,
-                        url=url,
-                        limit=1200,
-                    ),
-                    "matched_topic": topic,
-                    "confidence": confidence,
-                    "metadata": {
-                        "needs_source_ranking": False,
-                        "classification_reason": classification_reason,
-                        "original_topic": topic,
-                        "url_host": host,
-                    },
-                })
-
-                if len(evidence_items) >= top_k:
-                    return evidence_items
+        for record in ledger_records or []:
+            if not is_verified_record(record):
+                continue
+            url = record["source_url"]
+            if url in seen_urls:
+                continue
+            seen_urls.add(url)
+            source_level, classification_reason, confidence = self._classify_web_source(url)
+            host = (urlparse(url).hostname or "").lower()
+            digest = hashlib.sha256(url.encode("utf-8")).hexdigest()[:12].upper()
+            evidence_items.append({
+                "evidence_id": f"WEB-{digest}",
+                "channel": "web_policy",
+                "source_level": source_level,
+                "source_name": host,
+                "source_id": url,
+                "clause_no": None,
+                "page": None,
+                "url": url,
+                "content": record["extracted_content"][:1200],
+                "matched_topic": "verified web extraction",
+                "confidence": confidence,
+                "metadata": {
+                    "ledger_record_id": record["record_id"],
+                    "content_sha256": record["content_sha256"],
+                    "fetch_status": record["fetch_status"],
+                    "retrieved_at": record["retrieved_at"],
+                    "extractor": record["extractor"],
+                    "needs_source_ranking": False,
+                    "classification_reason": classification_reason,
+                    "url_host": host,
+                },
+            })
+            if len(evidence_items) >= top_k:
+                return evidence_items
 
         return evidence_items
 
@@ -579,30 +538,6 @@ class EvidenceSupervisorAgent:
                 }
             }
         ]
-
-    def _flatten_research_data(self, research_data: List[Any]) -> List[Dict[str, str]]:
-        flattened = []
-
-        for item in research_data:
-            if isinstance(item, dict):
-                for topic, content in item.items():
-                    if content:
-                        flattened.append({
-                            "topic": str(topic),
-                            "content": str(content)
-                        })
-            elif item:
-                flattened.append({
-                    "topic": "web research",
-                    "content": str(item)
-                })
-
-        return flattened
-
-    def _guess_section(self, index: int, sections: List[str]) -> str:
-        if 0 <= index - 1 < len(sections):
-            return sections[index - 1]
-        return f"web research item {index}"
 
     def _build_gaps(self, project_profile: Dict[str, Any], project_doc: str) -> List[Dict[str, Any]]:
         gaps = []
@@ -643,7 +578,10 @@ class EvidenceSupervisorAgent:
         local_ids = [
                         item["evidence_id"]
                         for item in evidence_items
-                        if item.get("channel") == "local_clause"
+                        if item.get("channel") in {
+                            "local_clause",
+                            "greenspec_rag",
+                        }
                     ][:3]
 
         web_items = [
@@ -682,13 +620,40 @@ class EvidenceSupervisorAgent:
                       if item.get("channel") == "project_doc"
                   ][:1]
 
+        evidence_by_id = {
+            str(item.get("evidence_id")): item
+            for item in evidence_items
+            if item.get("evidence_id")
+        }
+
+        def evidence_spans(evidence_ids: List[str]) -> List[Dict[str, str]]:
+            spans = []
+            for evidence_id in evidence_ids:
+                content = str(
+                    evidence_by_id.get(evidence_id, {}).get("content")
+                    or ""
+                ).strip()
+                if content:
+                    spans.append(
+                        {
+                            "evidence_id": evidence_id,
+                            "quote": content[:240],
+                        }
+                    )
+            return spans
+
+        claim_one_evidence = local_ids + doc_ids
+        claim_two_evidence = local_ids + web_ids + doc_ids
+        claim_three_evidence = doc_ids
+
         return [
             {
                 "claim_id": "CLAIM-001",
                 "claim": "本项目可先按北京普通办公楼方案/初设阶段进行绿色建筑二星级预审，并对三星级目标做差距分析。",
                 "claim_use": "precheck_conclusion",
                 "required_source_levels": ["T0", "PROJECT"],
-                "supporting_evidence_ids": local_ids + doc_ids,
+                "supporting_evidence_ids": claim_one_evidence,
+                "evidence_spans": evidence_spans(claim_one_evidence),
                 "status": "weakly_supported",
                 "reason": (
                     "二星预审需要已核验的正式条文证据和项目事实证据；"
@@ -700,7 +665,8 @@ class EvidenceSupervisorAgent:
                 "claim": "系统应结合本地条文、联网研究和项目资料开展绿色建筑预审分析",
                 "claim_use": "methodology",
                 "required_source_levels": ["T1", "T2"],
-                "supporting_evidence_ids": local_ids + web_ids + doc_ids,
+                "supporting_evidence_ids": claim_two_evidence,
+                "evidence_spans": evidence_spans(claim_two_evidence),
                 "status": "supported_for_demo",
                 "reason": "当前 evidence_pack 已合并 local_clause、web_policy、project_doc 三类证据。"
             },
@@ -709,7 +675,8 @@ class EvidenceSupervisorAgent:
                 "claim": "当前项目存在资料缺口，不能直接给出三星级达标结论。",
                 "claim_use": "project_fact",
                 "required_source_levels": ["PROJECT"],
-                "supporting_evidence_ids": doc_ids,
+                "supporting_evidence_ids": claim_three_evidence,
+                "evidence_spans": evidence_spans(claim_three_evidence),
                 "status": "supported",
                 "reason": f"识别到 {len(gaps)} 个资料缺口或待确认项。"
             }

@@ -225,6 +225,23 @@ supported
 
 ## 版本
 
+## claim_set.json
+
+用途：
+
+将报告使用的每一条结论与本次 EvidencePack 的证据 ID、原文片段绑定。它是模型输出进入报告前的机器校验对象，不直接代替最终 Markdown 报告。
+
+每条 claim 必须包含：
+
+- `claim_id`、`claim`、`claim_use`
+- `required_source_levels`
+- `supporting_evidence_ids`：只能引用本次 EvidencePack 中的 ID
+- `evidence_spans`：每个引用 ID 对应一段能在该证据 `content` 中精确找到的原文
+
+Schema：`greenspec/contracts/claim_set.schema.json`。
+
+Gate 的最低规则：ID 不存在、引用片段缺失或无法在证据中定位、来源等级不足、条文号/页码/版本缺失时，claim 不得标记为 `supported`，必须 `revise`、`research_again` 或人工复核。
+
 当前版本：`v0.1`
 
 如果以后要改字段名、删除字段、改变枚举值，应该升级协议版本。
