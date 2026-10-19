@@ -1,5 +1,6 @@
 from pathlib import Path
 from dotenv import load_dotenv
+from copy import deepcopy
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -13,6 +14,24 @@ from gpt_researcher.utils.enum import Tone
 if os.environ.get("LANGCHAIN_API_KEY"):
     os.environ["LANGCHAIN_TRACING_V2"] = "true"
 load_dotenv(override=True)
+
+def validate_task(task: dict) -> dict:
+    """Validate either a file-backed task or an isolated UI task."""
+    if not isinstance(task, dict) or not task:
+        raise ValueError("Task must be a non-empty JSON object")
+    missing_fields = [field for field in ("query",) if not task.get(field)]
+    if not (isinstance(task.get("project_profile"), dict) or task.get("project_profile_path")):
+        missing_fields.append("project_profile or project_profile_path")
+    if not (isinstance(task.get("project_doc"), str) or task.get("project_doc_path")):
+        missing_fields.append("project_doc or project_doc_path")
+    if not task.get("local_clause_path") and not (
+        task.get("greenspec_rag_url") and task.get("greenspec_retrieve_request")
+    ):
+        missing_fields.append("local_clause_path or greenspec_rag_url + greenspec_retrieve_request")
+    if missing_fields:
+        raise ValueError("Task file is missing required fields: " + ", ".join(missing_fields))
+    return task
+
 
 def open_task():
     repo_root = Path(__file__).resolve().parents[1]
@@ -49,38 +68,7 @@ def open_task():
     ) as file:
         task = json.load(file)
 
-    if not isinstance(task, dict) or not task:
-        raise ValueError(
-            f"Task file must contain a "
-            f"non-empty JSON object: "
-            f"{task_json_path}"
-        )
-
-    required_fields = [
-        "query",
-        "project_profile_path",
-        "project_doc_path",
-    ]
-
-    missing_fields = [
-        field
-        for field in required_fields
-        if not task.get(field)
-    ]
-
-    if not task.get("local_clause_path") and not (
-            task.get("greenspec_rag_url")
-            and task.get("greenspec_retrieve_request")
-    ):
-        missing_fields.append(
-            "local_clause_path or greenspec_rag_url + greenspec_retrieve_request"
-        )
-
-    if missing_fields:
-        raise ValueError(
-            "Task file is missing required fields: "
-            + ", ".join(missing_fields)
-        )
+    validate_task(task)
 
     strategic_llm = os.environ.get(
         "STRATEGIC_LLM"
@@ -94,9 +82,12 @@ def open_task():
         )
 
     return task
-async def run_research_task(query, websocket=None, stream_output=None, tone=Tone.Objective, headers=None):
-    task = open_task()
+async def run_research_task(query, websocket=None, stream_output=None, tone=Tone.Objective, headers=None, task_override=None):
+    task = deepcopy(task_override) if task_override is not None else open_task()
     task["query"] = query
+    if isinstance(task.get("greenspec_retrieve_request"), dict):
+        task["greenspec_retrieve_request"]["query"] = query
+    validate_task(task)
 
     chief_editor = ChiefEditorAgent(task, websocket, stream_output, tone, headers)
     research_report = await chief_editor.run_research_task()

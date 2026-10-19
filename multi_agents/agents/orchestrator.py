@@ -1,4 +1,3 @@
-import os
 import datetime
 import uuid
 from langgraph.graph import StateGraph, END
@@ -42,12 +41,12 @@ class ChiefEditorAgent:
         return uuid.uuid4().hex
 
     def _create_output_directory(self):
-        output_dir = "./outputs/" + \
-            sanitize_filename(
-                f"run_{self.task_id}_{self.task.get('query')[0:40]}")
-
-        os.makedirs(output_dir, exist_ok=True)
-        return output_dir
+        repo_root = Path(__file__).resolve().parents[2]
+        output_dir = repo_root / "outputs" / sanitize_filename(
+            f"run_{self.task_id}_{self.task.get('query')[0:40]}"
+        )
+        output_dir.mkdir(parents=True, exist_ok=True)
+        return str(output_dir)
 
     def _initialize_agents(self):
         editor = EditorAgent(
@@ -244,6 +243,7 @@ class ChiefEditorAgent:
 
         return {
             **result,
+            "run_dir": str(Path(self.output_dir).resolve()),
             "evaluation": evaluation,
             "evaluation_status": evaluation["status"],
         }

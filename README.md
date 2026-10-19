@@ -179,20 +179,50 @@ RETRIEVER=tavily
   -q
 ```
 
-### Run Incomplete Demo
+### Run archived local-clause demos
+
+The two commands below reproduce older local-clause examples. The active
+`multi_agents/task.json` and the interactive interview demo now use GreenSpec
+RAG for normative evidence.
+
+#### Incomplete archive
 
 ```
 $env:GREENSPEC_TASK_PATH = "greenspec/sample_tasks/beijing_office_incomplete.json"
 .\.venv\Scripts\python.exe -m multi_agents.main
 ```
 
-### Run Improved Demo
+#### Improved archive
 
 ```
 $env:GREENSPEC_TASK_PATH = "greenspec/sample_tasks/beijing_office_improved.json"
 .\.venv\Scripts\python.exe -m multi_agents.main
 Remove-Item Env:GREENSPEC_TASK_PATH
 ```
+
+### GreenSpec RAG + Gradio 面试演示
+
+先在独立的 `greenspec RAG` 仓库启动检索服务，确认健康检查返回 `ready: true` 和有效的混合索引：
+
+```powershell
+cd "C:\Users\liang\Desktop\agent学习\greenspec RAG"
+docker compose up -d qdrant rag-api
+Invoke-RestMethod http://127.0.0.1:8787/health
+```
+
+再从本仓库启动本地交互页面：
+
+```powershell
+cd "C:\Users\liang\Desktop\agent学习\gpt-researcher"
+.\.venv\Scripts\python.exe -m pip install -r requirements-demo.txt
+Remove-Item Env:GREENSPEC_TASK_PATH -ErrorAction SilentlyContinue
+$env:PYTHONIOENCODING = 'utf-8'
+.\.venv\Scripts\python.exe -m multi_agents.demo_app
+```
+
+若浏览器没有自动打开，访问 `http://127.0.0.1:7860`。选择“资料不完整”或“资料改善版”，可修改一项资料状态或研究重点。核对自动生成的输入摘要后点击“开始分析”。页面展示本次 RAG EvidencePack ID、检索运行 ID、规范引用、资料缺口、人工复核状态和报告，并可下载报告与证据文件。再次运行时，页面根据真实输出对比资料缺口。当前仅验证北京新建普通办公楼场景。
+
+界面中的规范检索基准日期默认为 `2026-09-02`，用于复现已验证的索引案例，**不代表最新规范状态**。GreenSpec RAG 必须返回完整的 `evidence_pack.v1`；服务失败或降级时，本次演示会明确停止，不会悄悄回退到原本地条文文件。报告和证据文件保存在 `outputs/run_*/`。
 
 运行结果保存在：
 

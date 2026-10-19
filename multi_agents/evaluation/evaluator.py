@@ -195,6 +195,8 @@ class GreenSpecEvaluator:
                     or []
             ),
         ]
+        if params.get("include_report"):
+            values.append(context.get("report_text", ""))
 
         text = " ".join(
             str(value)
@@ -242,7 +244,7 @@ class GreenSpecEvaluator:
 
         return (
             len(local_items) >= minimum,
-            f"local_clause_count={len(local_items)}",
+            f"normative_clause_count={len(local_items)}",
         )
 
     def _check_expected_clause_hit(

@@ -14,7 +14,7 @@
     {
       "id": "EVAL-002",
       "category": "task_decomposition",
-      "name": "Sections cover core project topics",
+      "name": "Research output covers core project topics",
       "check": "sections_keyword_coverage",
       "params": {
         "concept_groups": [
@@ -47,13 +47,14 @@
             ]
           }
         ],
-        "min_groups": 4
+        "min_groups": 4,
+        "include_report": true
       }
     },
     {
       "id": "EVAL-003",
       "category": "clause_recall",
-      "name": "Local clause evidence is retrieved",
+      "name": "Normative clause evidence is retrieved",
       "check": "local_clause_count",
       "params": {
         "min": 1
@@ -152,7 +153,7 @@
           },
           {
             "name": "references",
-            "aliases": ["references", "参考文献", "参考资料"]
+            "aliases": ["references", "参考文献", "参考资料", "参考与证据来源", "参考依据", "引用与复核说明"]
           }
         ]
       }

@@ -220,7 +220,33 @@ def test_local_clause_count_accepts_greenspec_rag():
     )
 
     assert passed is True
-    assert details == "local_clause_count=1"
+    assert details == "normative_clause_count=1"
+
+
+def test_topic_coverage_can_check_written_report():
+    context = {
+        "trace": {},
+        "report_text": "绿色建筑二星级预审：节能、可再生能源与资料缺口。",
+    }
+    params = {
+        "concept_groups": [
+            {"name": name, "aliases": [alias]}
+            for name, alias in (
+                ("green", "绿色建筑"),
+                ("star", "二星级"),
+                ("energy", "节能"),
+                ("renewable", "可再生能源"),
+                ("gaps", "资料缺口"),
+            )
+        ],
+        "min_groups": 4,
+        "include_report": True,
+    }
+
+    passed, details = make_evaluator()._check_sections_keyword_coverage(context, params)
+
+    assert passed is True
+    assert "renewable" in details
 
 
 def test_expected_clause_hit_maps_legacy_id_to_canonical_greenspec():

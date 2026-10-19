@@ -42,7 +42,7 @@ class ApplicabilityJudge:
     ) -> List[Dict[str, Any]]:
         local_clause_items = [
             item for item in evidence_items
-            if item.get("channel") == "local_clause"
+            if item.get("channel") in {"local_clause", "greenspec_rag"}
         ]
 
         results = []

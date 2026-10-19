@@ -25,6 +25,8 @@ def fetch_evidence_pack(
         payload = response.json()
     except ValueError as exc:
         raise GreenSpecEvidencePackError("GreenSpec retrieval response is not JSON") from exc
+    if not isinstance(payload, dict):
+        raise GreenSpecEvidencePackError("GreenSpec retrieval response must be an object")
     if response.status_code != 200:
         message = payload.get("error", {}).get("message", response.text)
         raise GreenSpecEvidencePackError(f"GreenSpec retrieval failed ({response.status_code}): {message}")
@@ -34,6 +36,10 @@ def fetch_evidence_pack(
             "GreenSpec did not return evidence_pack.v1; require full hybrid retrieval rather than a degraded ranked list."
         )
     validate_evidence_pack(pack)
+    if pack.get("query") != retrieve_request.get("query"):
+        raise GreenSpecEvidencePackError("GreenSpec returned evidence for a different query")
+    if pack.get("degraded_modes"):
+        raise GreenSpecEvidencePackError("GreenSpec retrieval was degraded; full hybrid evidence is required")
     return pack
 
 
@@ -78,7 +84,9 @@ def adapt_items(pack: Mapping[str, Any]) -> list[dict[str, Any]]:
         source_level = "T0" if verified and content_type.startswith("normative") else "T0_CANDIDATE"
         page_start = citation.get("pdf_page_start")
         page_end = citation.get("pdf_page_end")
-        page = f"PDF p.{page_start}" if page_start == page_end else f"PDF pp.{page_start}-{page_end}"
+        page = None
+        if page_start is not None:
+            page = f"PDF p.{page_start}" if page_start == page_end or page_end is None else f"PDF pp.{page_start}-{page_end}"
         converted.append(
             {
                 "evidence_id": evidence_id,
@@ -101,6 +109,11 @@ def adapt_items(pack: Mapping[str, Any]) -> list[dict[str, Any]]:
                     "clause_id": item.get("clause_id"),
                     "standard_version": citation.get("standard_version"),
                     "verification_status": item.get("verification_status"),
+                    "missing_facts": item.get("missing_facts", []),
+                    # The sidecar ranks by scope but does not expose all scope
+                    # fields in RetrieveItem. The downstream judge must not
+                    # convert that missing metadata into a final decision.
+                    "requires_manual_review": True,
                     "pdf_page_start": page_start,
                     "pdf_page_end": page_end,
                     "printed_page_start": citation.get("printed_page_start"),
