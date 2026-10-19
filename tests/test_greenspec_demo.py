@@ -186,3 +186,18 @@ def test_launch_respects_port_override(monkeypatch):
     demo_app.launch_demo()
 
     assert observed["server_port"] == 7861
+
+
+def test_loopback_bypasses_proxy_without_dropping_existing_exclusions(monkeypatch):
+    from multi_agents import demo_app
+
+    monkeypatch.setenv("NO_PROXY", "example.local")
+    if demo_app.os.name != "nt":
+        monkeypatch.delenv("no_proxy", raising=False)
+
+    demo_app._bypass_proxy_for_loopback()
+
+    assert "example.local" in demo_app.os.environ["NO_PROXY"]
+    for host in ("127.0.0.1", "localhost", "::1"):
+        assert host in demo_app.os.environ["NO_PROXY"]
+        assert host in demo_app.os.environ["no_proxy"]

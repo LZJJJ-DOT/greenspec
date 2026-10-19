@@ -241,8 +241,22 @@ def create_app() -> gr.Blocks:
     return app
 
 
+def _bypass_proxy_for_loopback() -> None:
+    """Keep Gradio's localhost startup request out of an external proxy."""
+    loopback_hosts = ("127.0.0.1", "localhost", "::1")
+    for variable in ("NO_PROXY", "no_proxy"):
+        existing = [part.strip() for part in os.getenv(variable, "").split(",") if part.strip()]
+        if "*" in existing:
+            continue
+        present = {part.lower() for part in existing}
+        os.environ[variable] = ",".join(
+            existing + [host for host in loopback_hosts if host.lower() not in present]
+        )
+
+
 def launch_demo() -> None:
     """Start the local UI or reuse one already listening on the chosen port."""
+    _bypass_proxy_for_loopback()
     raw_port = os.getenv("GRADIO_SERVER_PORT", "7860")
     try:
         port = int(raw_port)
