@@ -6,6 +6,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from datetime import date
 import json
+import math
 import os
 from pathlib import Path
 
@@ -52,6 +53,16 @@ class DemoInput:
     precheck: str
     gap_analysis: str
     provided_facts: list[str]
+    province: str = "北京市"
+    district: str = "朝阳区"
+    climate_zone: str = "寒冷地区"
+    above_ground_area_m2: float = 32000
+    underground_area_m2: float = 10000
+    building_height_m: float = 45
+    above_ground_floors: int = 10
+    underground_floors: int = 2
+    plot_ratio: float = 2.5
+    green_space_ratio: float = 0.3
     additional_notes: str = ""
     focus: str = ""
     as_of_date: str = DEFAULT_AS_OF_DATE
@@ -77,11 +88,21 @@ def preset_values(name: str) -> dict:
     ]
     return {
         "project_name": profile["project_name"],
+        "province": profile["location"]["province"],
         "city": profile["location"]["city"],
+        "district": profile["location"]["district"],
+        "climate_zone": profile["location"]["climate_zone"],
         "building_type": profile["building"]["building_type"],
         "construction": "新建" if profile["building"].get("new_or_existing") == "new_building" else "既有",
         "design_phase": "方案深化" if profile["building"].get("design_phase") == "scheme_or_preliminary_design" else "初步设计",
         "floor_area_m2": profile["building"]["gross_floor_area_m2"],
+        "above_ground_area_m2": profile["building"]["above_ground_area_m2"],
+        "underground_area_m2": profile["building"]["underground_area_m2"],
+        "building_height_m": profile["building"]["building_height_m"],
+        "above_ground_floors": profile["building"]["above_ground_floors"],
+        "underground_floors": profile["building"]["underground_floors"],
+        "plot_ratio": profile["building"]["plot_ratio"],
+        "green_space_ratio_percent": profile["building"]["green_space_ratio"] * 100,
         "precheck": profile["green_building_target"]["precheck"],
         "gap_analysis": profile["green_building_target"]["gap_analysis"],
         "provided_facts": provided,
@@ -91,38 +112,94 @@ def preset_values(name: str) -> dict:
     }
 
 
-def _validate_input(value: DemoInput) -> None:
+def _validate_input(value: DemoInput, *, require_supported_scope: bool = True) -> None:
     if value.preset not in PRESET_PATHS:
         raise DemoInputError("请选择一个已验证的案例预设")
     if not value.project_name.strip():
         raise DemoInputError("请填写项目名称")
-    if value.city.strip() not in {"北京", "北京市"} or value.building_type.strip() != "普通办公楼":
-        raise DemoInputError("当前规范索引仅验证北京普通办公楼；请使用北京普通办公楼案例")
-    if value.construction != "新建" or value.design_phase not in {"方案深化", "初步设计"}:
-        raise DemoInputError("当前演示仅验证新建建筑的方案深化或初步设计阶段")
-    if value.precheck != "two_star" or value.gap_analysis != "three_star":
-        raise DemoInputError("当前演示仅验证二星级预审和三星级差距分析")
-    if isinstance(value.floor_area_m2, bool) or not isinstance(value.floor_area_m2, (int, float)) or value.floor_area_m2 <= 0:
-        raise DemoInputError("建筑面积必须大于 0")
+    if not all(isinstance(field, str) and field.strip() for field in (
+        value.province, value.city, value.district, value.climate_zone,
+    )):
+        raise DemoInputError("请填写省、市、区和气候区")
+    if value.building_type not in {"普通办公楼", "校园建筑", "其他"}:
+        raise DemoInputError("请选择页面列出的建筑类型")
+    for label, number, positive in (
+        ("总建筑面积", value.floor_area_m2, True),
+        ("地上建筑面积", value.above_ground_area_m2, False),
+        ("地下建筑面积", value.underground_area_m2, False),
+        ("建筑高度", value.building_height_m, True),
+        ("容积率", value.plot_ratio, False),
+    ):
+        if (isinstance(number, bool) or not isinstance(number, (int, float))
+                or not math.isfinite(number) or number < 0
+                or (positive and number == 0)):
+            requirement = "正数" if positive else "非负数"
+            raise DemoInputError(f"{label}必须是有效的{requirement}")
+    for label, number in (
+        ("地上层数", value.above_ground_floors),
+        ("地下层数", value.underground_floors),
+    ):
+        if isinstance(number, bool) or not isinstance(number, (int, float)) or not float(number).is_integer() or number < 0:
+            raise DemoInputError(f"{label}必须是非负整数")
+    if value.above_ground_floors == 0:
+        raise DemoInputError("地上层数必须大于 0")
+    if (isinstance(value.green_space_ratio, bool)
+            or not isinstance(value.green_space_ratio, (int, float))
+            or not math.isfinite(value.green_space_ratio)
+            or not 0 <= value.green_space_ratio <= 1):
+        raise DemoInputError("绿地率须在 0% 到 100% 之间")
     if set(value.provided_facts) - set(FACT_FIELDS):
         raise DemoInputError("资料清单包含未知项目")
     try:
         date.fromisoformat(value.as_of_date)
     except (TypeError, ValueError) as exc:
         raise DemoInputError("检索基准日期请使用 YYYY-MM-DD 格式") from exc
+    if require_supported_scope and not is_supported_scope(value):
+        raise DemoInputError(
+            "当前仅北京新建普通办公楼（二星级目标提升至三星级目标）可运行分析；"
+            "其他地点或建筑类型可填写并预览画像。北京项目的气候区请填“寒冷地区”。"
+        )
 
 
-def build_demo_task(value: DemoInput, *, rag_url: str | None = None) -> dict:
-    """Create an isolated task, document summary and RAG request from one form."""
-    _validate_input(value)
+def is_supported_scope(value: DemoInput) -> bool:
+    return (
+        value.province.strip() in {"北京", "北京市"}
+        and value.city.strip() in {"北京", "北京市"}
+        and value.climate_zone.strip() == "寒冷地区"
+        and value.building_type == "普通办公楼"
+        and value.construction == "新建"
+        and value.design_phase in {"方案深化", "初步设计"}
+        and value.precheck == "two_star"
+        and value.gap_analysis == "three_star"
+    )
+
+
+def build_demo_profile(value: DemoInput) -> dict:
+    """Resolve a preset and all edited fields for preview or supported analysis."""
+    _validate_input(value, require_supported_scope=False)
     profile = deepcopy(load_preset(value.preset))
     profile["project_name"] = value.project_name.strip()
-    profile["location"]["province"] = "北京市"
-    profile["location"]["city"] = "北京市"
+    profile["location"].update({
+        "province": value.province.strip(),
+        "city": value.city.strip(),
+        "district": value.district.strip(),
+        "climate_zone": value.climate_zone.strip(),
+    })
     profile["building"]["building_type"] = value.building_type.strip()
+    profile["building"]["building_type_code"] = "office" if value.building_type == "普通办公楼" else None
+    profile["building"]["building_category"] = "public_building" if value.building_type == "普通办公楼" else None
     profile["building"]["new_or_existing"] = "new_building"
     profile["building"]["design_phase"] = "scheme_or_preliminary_design"
-    profile["building"]["gross_floor_area_m2"] = value.floor_area_m2
+    profile["building"].update({
+        "gross_floor_area_m2": value.floor_area_m2,
+        "above_ground_area_m2": value.above_ground_area_m2,
+        "underground_area_m2": value.underground_area_m2,
+        "building_height_m": value.building_height_m,
+        "above_ground_floors": int(value.above_ground_floors),
+        "underground_floors": int(value.underground_floors),
+        "plot_ratio": value.plot_ratio,
+        "green_space_ratio": value.green_space_ratio,
+    })
     profile["green_building_target"]["precheck"] = value.precheck
     profile["green_building_target"]["gap_analysis"] = value.gap_analysis
 
@@ -138,6 +215,14 @@ def build_demo_task(value: DemoInput, *, rag_url: str | None = None) -> dict:
     profile["available_documents"] = core_documents + [
         field.document_name for label, field in FACT_FIELDS.items() if label in selected
     ]
+    return profile
+
+
+def build_demo_task(value: DemoInput, *, rag_url: str | None = None) -> dict:
+    """Create an isolated task, document summary and RAG request from one form."""
+    _validate_input(value)
+    profile = build_demo_profile(value)
+    known = profile["known_parameters"]
 
     query = value.focus.strip() or (
         f"请针对{value.city.strip()}新建普通办公楼{value.design_phase}阶段，研究绿色建筑二星级预审"
@@ -145,9 +230,18 @@ def build_demo_task(value: DemoInput, *, rag_url: str | None = None) -> dict:
     )
     provided_text = "、".join(profile["available_documents"])
     missing_text = "、".join(profile["missing_fields"]) or "暂无已标记的缺失资料"
+    location_text = value.province.strip()
+    if value.city.strip() != location_text:
+        location_text += value.city.strip()
+    location_text += value.district.strip()
     project_doc = (
         f"# {profile['project_name']} · 资料摘要\n\n"
-        f"项目位于北京市，为新建普通办公楼，处于{value.design_phase}阶段，建筑面积约{value.floor_area_m2:g}平方米。"
+        f"项目位于{location_text}，"
+        f"为新建普通办公楼，处于{value.design_phase}阶段，总建筑面积约{value.floor_area_m2:g}平方米，"
+        f"其中地上{value.above_ground_area_m2:g}平方米、地下{value.underground_area_m2:g}平方米；"
+        f"建筑高度{value.building_height_m:g}米，地上{int(value.above_ground_floors)}层、"
+        f"地下{int(value.underground_floors)}层，容积率{value.plot_ratio:g}，"
+        f"绿地率{value.green_space_ratio * 100:g}%，气候区为{value.climate_zone.strip()}。"
         "目标为绿色建筑二星级预审和三星级差距分析。\n\n"
         f"已提供资料：{provided_text}。\n\n"
         f"尚未提供或待确认：{missing_text}。\n\n"

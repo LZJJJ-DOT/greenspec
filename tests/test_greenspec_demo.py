@@ -17,6 +17,7 @@ from multi_agents.agents.greenspec_evidence_pack import (
 
 def make_input(preset="资料不完整", **overrides):
     fields = preset_values(preset)
+    fields["green_space_ratio"] = fields.pop("green_space_ratio_percent") / 100
     fields.update(overrides)
     return DemoInput(preset=preset, **fields)
 
@@ -41,27 +42,57 @@ def test_presets_and_edited_fact_share_one_source_of_truth():
     assert "local_clause_path" not in task
 
 
-def test_streamlined_form_keeps_scope_fixed_and_updates_missing_documents():
-    from multi_agents.demo_app import _form, preview
+def test_form_maps_all_project_facts_and_updates_missing_documents():
+    from multi_agents.demo_app import FORM_KEYS, _form, preview
 
-    facts = list(preset_values("资料不完整")["provided_facts"])
-    facts.append("建筑能耗模拟")
-    value = _form("资料不完整", "现场办公楼", 38000, facts, "待补充计算书")
+    fields = preset_values("资料不完整")
+    fields.update({
+        "project_name": "现场办公楼", "district": "海淀区",
+        "floor_area_m2": 38000, "above_ground_area_m2": 30000,
+        "underground_area_m2": 8000, "building_height_m": 42,
+        "above_ground_floors": 9, "underground_floors": 2,
+        "plot_ratio": 2.1, "green_space_ratio_percent": 35,
+        "provided_facts": fields["provided_facts"] + ["建筑能耗模拟"],
+        "additional_notes": "待补充计算书",
+    })
+    args = tuple(fields[key] for key in FORM_KEYS)
+    value = _form("资料不完整", *args)
     task = build_demo_task(value)
 
     assert (value.city, value.building_type, value.construction) == ("北京市", "普通办公楼", "新建")
     assert (value.precheck, value.gap_analysis, value.focus) == ("two_star", "three_star", "")
+    assert task["project_profile"]["location"]["district"] == "海淀区"
+    assert task["project_profile"]["building"]["above_ground_area_m2"] == 30000
+    assert task["project_profile"]["building"]["green_space_ratio"] == 0.35
+    assert task["greenspec_retrieve_request"]["project_profile"]["building"]["building_height_m"] == 42
+    assert "绿地率35%" in task["project_doc"]
     assert task["greenspec_retrieve_request"]["query"] == task["query"]
     assert "建筑能耗模拟结果" not in task["project_profile"]["missing_fields"]
     assert "建筑能耗模拟报告" in task["project_profile"]["available_documents"]
 
-    summary = preview("资料不完整", "现场办公楼", 38000, facts, "待补充计算书")
+    summary = preview("资料不完整", *args)
     assert "现场办公楼" in summary and "待补充计算书" in summary
+    assert "海淀区" in summary and "绿地率 35%" in summary
     assert "2026-09-02" in summary and "不解析计算文件" in summary
     assert "本次问题" not in summary and "设计阶段" not in summary
 
 
-def test_streamlined_gradio_page_only_exposes_demo_inputs():
+def test_presets_fill_every_visible_field_and_unsupported_profile_can_preview():
+    from multi_agents.demo_app import FORM_KEYS, preview, select_preset
+
+    selected = select_preset("资料改善版")
+    expected = preset_values("资料改善版")
+    assert selected[:len(FORM_KEYS)] == tuple(expected[key] for key in FORM_KEYS)
+    assert "建筑能耗模拟报告" in selected[-2]
+
+    fields = dict(expected)
+    fields.update({"province": "上海市", "city": "上海市", "building_type": "校园建筑"})
+    summary = preview("资料改善版", *(fields[key] for key in FORM_KEYS))
+    assert "上海市" in summary and "校园建筑" in summary
+    assert "仅供填写与展示" in summary
+
+
+def test_gradio_page_exposes_profile_inputs_without_research_question():
     from multi_agents.demo_app import create_app
 
     app = create_app()
@@ -70,7 +101,12 @@ def test_streamlined_gradio_page_only_exposes_demo_inputs():
         for component in app.config["components"]
         if component.get("props", {}).get("label")
     }
-    assert {"案例预设", "项目名称", "总建筑面积（平方米）"} <= labels
+    assert {
+        "案例预设", "项目名称", "省／直辖市", "城市", "区／县", "气候区",
+        "建筑类型", "总建筑面积（平方米）", "地上建筑面积（平方米）",
+        "地下建筑面积（平方米）", "建筑高度（米）", "地上建筑层数",
+        "地下建筑层数", "容积率", "绿地率（%）",
+    } <= labels
     assert not any(
         term in label for label in labels
         for term in ("项目性质", "设计阶段", "研究重点", "研究问题", "预审目标", "差距分析目标")
@@ -79,14 +115,32 @@ def test_streamlined_gradio_page_only_exposes_demo_inputs():
         dependency for dependency in app.config["dependencies"]
         if dependency.get("api_name") == "run_demo"
     )
-    assert len(run["inputs"]) == 6  # Five visible inputs and the previous-run state.
+    assert len(run["inputs"]) == 18  # Preset, sixteen project fields and previous-run state.
 
 
 def test_demo_rejects_unsupported_scope_and_bad_date():
-    with pytest.raises(DemoInputError, match="仅验证北京"):
+    with pytest.raises(DemoInputError, match="仅北京"):
         build_demo_task(make_input(city="上海"))
+    with pytest.raises(DemoInputError, match="仅北京"):
+        build_demo_task(make_input(building_type="校园建筑"))
     with pytest.raises(DemoInputError, match="YYYY-MM-DD"):
         build_demo_task(make_input(as_of_date="10/19/2026"))
+
+
+def test_unsupported_profile_is_blocked_before_rag_call(monkeypatch):
+    from multi_agents import demo_app
+
+    fields = preset_values("资料改善版")
+    fields.update({"province": "上海市", "city": "上海市", "building_type": "校园建筑"})
+    monkeypatch.setattr(
+        demo_app, "check_rag_health",
+        lambda *_a: pytest.fail("unsupported profile reached RAG"),
+    )
+    result = demo_app.run_demo(
+        "资料改善版", *(fields[key] for key in demo_app.FORM_KEYS), None,
+    )
+    assert "仅北京新建普通办公楼" in result[0]
+    assert result[1:5] == ("", "", "", "")
 
 
 def test_rag_health_must_be_ready(monkeypatch):

@@ -13,45 +13,79 @@ import requests
 
 from multi_agents.demo_config import (
     DEFAULT_AS_OF_DATE, DemoInput, DemoInputError, FACT_FIELDS, PRESET_PATHS,
-    build_demo_task, check_rag_health, preset_values,
+    build_demo_profile, build_demo_task, check_rag_health, is_supported_scope,
+    preset_values,
 )
 
 
-FORM_KEYS = ("project_name", "floor_area_m2", "provided_facts", "additional_notes")
+FORM_KEYS = (
+    "project_name", "province", "city", "district", "climate_zone",
+    "building_type", "floor_area_m2", "above_ground_area_m2",
+    "underground_area_m2", "building_height_m", "above_ground_floors",
+    "underground_floors", "plot_ratio", "green_space_ratio_percent",
+    "provided_facts", "additional_notes",
+)
 
 
-def _form(preset, project_name, floor_area_m2, provided_facts, additional_notes) -> DemoInput:
+def _form(preset, *values) -> DemoInput:
+    if len(values) != len(FORM_KEYS):
+        raise DemoInputError("页面字段数量与项目画像不一致，请刷新页面")
+    fields = dict(zip(FORM_KEYS, values))
     fixed = preset_values(preset)
+    green_percent = fields.pop("green_space_ratio_percent")
+    fields["green_space_ratio"] = (
+        green_percent / 100 if isinstance(green_percent, (int, float)) else green_percent
+    )
+    fields["provided_facts"] = list(fields["provided_facts"] or [])
+    fields["additional_notes"] = fields["additional_notes"] or ""
     return DemoInput(
-        preset=preset, project_name=project_name, city=fixed["city"],
-        building_type=fixed["building_type"], construction=fixed["construction"],
-        design_phase=fixed["design_phase"], floor_area_m2=floor_area_m2,
+        preset=preset, construction=fixed["construction"],
+        design_phase=fixed["design_phase"],
         precheck=fixed["precheck"], gap_analysis=fixed["gap_analysis"],
-        provided_facts=list(provided_facts or []),
-        additional_notes=additional_notes or "", focus="",
-        as_of_date=DEFAULT_AS_OF_DATE,
+        focus="", as_of_date=DEFAULT_AS_OF_DATE, **fields,
     )
 
 
 def preview(*values) -> str:
     try:
         value = _form(*values)
-        task = build_demo_task(value)
+        profile = build_demo_profile(value)
     except DemoInputError as exc:
         return f"⚠️ {exc}"
-    profile = task["project_profile"]
+    location = profile["location"]
+    building = profile["building"]
     documents = "、".join(profile["available_documents"])
     missing = "、".join(profile["missing_fields"]) or "暂无已标记的缺失资料"
     notes = value.additional_notes.strip()
     notes_line = f"**补充说明（待核实）：** {notes}\n\n" if notes else ""
+    scope_line = (
+        "🟢 当前画像可运行北京普通办公楼预审。"
+        if is_supported_scope(value)
+        else "🟠 当前画像仅供填写与展示；分析目前仅支持北京新建普通办公楼。"
+    )
+    area_difference = abs(
+        building["above_ground_area_m2"] + building["underground_area_m2"]
+        - building["gross_floor_area_m2"]
+    )
+    area_note = (
+        "⚠️ 地上与地下面积之和与总建筑面积不一致，请核对。\n\n"
+        if area_difference > max(1, building["gross_floor_area_m2"] * 0.01) else ""
+    )
     return (
-        "### 本次项目资料\n\n"
-        f"**项目：** {profile['project_name']}　"
-        f"**总建筑面积：** {profile['building']['gross_floor_area_m2']:g} 平方米\n\n"
+        "### 当前项目画像\n\n"
+        f"**项目：** {profile['project_name']}　**建筑类型：** {building['building_type']}\n\n"
+        f"**地点：** {location['province']} / {location['city']} / {location['district']}"
+        f"　**气候区：** {location['climate_zone']}\n\n"
+        f"**建筑面积：** 总计 {building['gross_floor_area_m2']:g}、"
+        f"地上 {building['above_ground_area_m2']:g}、地下 {building['underground_area_m2']:g} 平方米\n\n"
+        f"**建筑规模：** 高 {building['building_height_m']:g} 米；"
+        f"地上 {building['above_ground_floors']} 层、地下 {building['underground_floors']} 层；"
+        f"容积率 {building['plot_ratio']:g}；绿地率 {building['green_space_ratio'] * 100:g}%\n\n"
+        f"{area_note}{scope_line}\n\n"
         f"**已标记已有资料：** {documents}\n\n"
         f"**未提供或待确认：** {missing}\n\n"
         f"{notes_line}"
-        f"**规范检索基准日期：** {task['greenspec_retrieve_request']['filters']['as_of_date']}"
+        f"**规范检索基准日期：** {DEFAULT_AS_OF_DATE}"
         "（历史案例复现日期，不代表当前规范状态）\n\n"
         "勾选仅表示资料状态，不代表计算结果已核验或星级达标；本演示不解析计算文件。"
     )
@@ -144,13 +178,10 @@ def _comparison(previous: dict | None, current: dict) -> str:
     return "\n\n".join(lines)
 
 
-def run_demo(preset, project_name, floor_area_m2, provided_facts,
-             additional_notes, previous,
-             progress=gr.Progress()):
+def run_demo(*form_and_previous, progress=gr.Progress()):
+    previous = form_and_previous[-1]
     try:
-        task = build_demo_task(_form(
-            preset, project_name, floor_area_m2, provided_facts, additional_notes,
-        ))
+        task = build_demo_task(_form(*form_and_previous[:-1]))
         progress(0.05, desc="检查 GreenSpec RAG 服务")
         health = check_rag_health(task["greenspec_rag_url"])
         progress(0.15, desc="研究、规范检索、证据核验与报告生成中")
@@ -194,8 +225,10 @@ def create_app() -> gr.Blocks:
     initial = preset_values(first_preset)
     with gr.Blocks(title="GreenSpec 绿建预审演示") as app:
         gr.Markdown(
-            "# GreenSpec｜北京新建办公楼二星升三星预审\n"
-            "北京新建普通办公楼从二星级目标提升到三星级目标的**证据与资料缺口预审助手**。"
+            "# GreenSpec｜项目画像与资料缺口预审\n"
+            "可填写地点、建筑指标和资料状态，或通过案例预设一键填充。"
+            "**当前仅北京新建普通办公楼的二星级目标升三星级目标可运行分析**；"
+            "其他画像可填写并预览。"
             "规范证据来自 GreenSpec RAG，报告由 GPT Researcher 多智能体流程生成；"
             "结论须由专业人员复核。"
         )
@@ -203,10 +236,30 @@ def create_app() -> gr.Blocks:
             preset = gr.Dropdown(list(PRESET_PATHS), value=first_preset, label="案例预设")
             health_button = gr.Button("检查 RAG 服务")
         health = gr.Markdown("点击“检查 RAG 服务”查看在线状态。")
-        gr.Markdown("选择案例，调整项目资料状态，再点击「开始分析」。")
+        gr.Markdown("### 基本信息与地点")
         with gr.Row():
             project_name = gr.Textbox(value=initial["project_name"], label="项目名称")
+            building_type = gr.Dropdown(
+                ["普通办公楼", "校园建筑", "其他"],
+                value=initial["building_type"], label="建筑类型",
+            )
+        with gr.Row():
+            province = gr.Textbox(value=initial["province"], label="省／直辖市")
+            city = gr.Textbox(value=initial["city"], label="城市")
+            district = gr.Textbox(value=initial["district"], label="区／县")
+            climate_zone = gr.Textbox(value=initial["climate_zone"], label="气候区")
+        gr.Markdown("### 建筑指标")
+        with gr.Row():
             floor_area = gr.Number(value=initial["floor_area_m2"], label="总建筑面积（平方米）")
+            above_area = gr.Number(value=initial["above_ground_area_m2"], label="地上建筑面积（平方米）")
+            underground_area = gr.Number(value=initial["underground_area_m2"], label="地下建筑面积（平方米）")
+            height = gr.Number(value=initial["building_height_m"], label="建筑高度（米）")
+        with gr.Row():
+            above_floors = gr.Number(value=initial["above_ground_floors"], precision=0, label="地上建筑层数")
+            underground_floors = gr.Number(value=initial["underground_floors"], precision=0, label="地下建筑层数")
+            plot_ratio = gr.Number(value=initial["plot_ratio"], label="容积率")
+            green_ratio = gr.Number(value=initial["green_space_ratio_percent"], label="绿地率（%）")
+        gr.Markdown("### 已有资料")
         facts = gr.CheckboxGroup(
             list(FACT_FIELDS), value=initial["provided_facts"],
             label="已有资料（仅声明有无；未勾选＝未提供/待确认）",
@@ -214,7 +267,11 @@ def create_app() -> gr.Blocks:
         notes = gr.Textbox(
             value="", lines=2, label="补充项目说明（可选；文字备注，待人工核实）",
         )
-        form_components = [preset, project_name, floor_area, facts, notes]
+        form_components = [
+            preset, project_name, province, city, district, climate_zone,
+            building_type, floor_area, above_area, underground_area, height,
+            above_floors, underground_floors, plot_ratio, green_ratio, facts, notes,
+        ]
         edit_status = gr.Markdown(f"当前使用：{first_preset}预设。")
         preview_panel = gr.Markdown(preview(first_preset, *(initial[key] for key in FORM_KEYS)))
         preset.change(select_preset, inputs=preset, outputs=form_components[1:] + [preview_panel, edit_status])
