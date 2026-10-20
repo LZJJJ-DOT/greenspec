@@ -17,37 +17,43 @@ from multi_agents.demo_config import (
 )
 
 
-FORM_KEYS = (
-    "project_name", "city", "building_type", "construction", "design_phase",
-    "floor_area_m2", "precheck", "gap_analysis", "provided_facts",
-    "additional_notes", "focus", "as_of_date",
-)
+FORM_KEYS = ("project_name", "floor_area_m2", "provided_facts", "additional_notes")
 
 
-def _form(preset, project_name, city, building_type, construction, design_phase,
-          floor_area_m2, precheck, gap_analysis, provided_facts, additional_notes,
-          focus, as_of_date) -> DemoInput:
+def _form(preset, project_name, floor_area_m2, provided_facts, additional_notes) -> DemoInput:
+    fixed = preset_values(preset)
     return DemoInput(
-        preset=preset, project_name=project_name, city=city,
-        building_type=building_type, construction=construction,
-        design_phase=design_phase, floor_area_m2=floor_area_m2,
-        precheck=precheck, gap_analysis=gap_analysis,
+        preset=preset, project_name=project_name, city=fixed["city"],
+        building_type=fixed["building_type"], construction=fixed["construction"],
+        design_phase=fixed["design_phase"], floor_area_m2=floor_area_m2,
+        precheck=fixed["precheck"], gap_analysis=fixed["gap_analysis"],
         provided_facts=list(provided_facts or []),
-        additional_notes=additional_notes or "", focus=focus or "",
-        as_of_date=as_of_date,
+        additional_notes=additional_notes or "", focus="",
+        as_of_date=DEFAULT_AS_OF_DATE,
     )
 
 
 def preview(*values) -> str:
     try:
-        task = build_demo_task(_form(*values))
+        value = _form(*values)
+        task = build_demo_task(value)
     except DemoInputError as exc:
         return f"⚠️ {exc}"
+    profile = task["project_profile"]
+    documents = "、".join(profile["available_documents"])
+    missing = "、".join(profile["missing_fields"]) or "暂无已标记的缺失资料"
+    notes = value.additional_notes.strip()
+    notes_line = f"**补充说明（待核实）：** {notes}\n\n" if notes else ""
     return (
-        f"**本次问题：** {task['query']}\n\n"
+        "### 本次项目资料\n\n"
+        f"**项目：** {profile['project_name']}　"
+        f"**总建筑面积：** {profile['building']['gross_floor_area_m2']:g} 平方米\n\n"
+        f"**已标记已有资料：** {documents}\n\n"
+        f"**未提供或待确认：** {missing}\n\n"
+        f"{notes_line}"
         f"**规范检索基准日期：** {task['greenspec_retrieve_request']['filters']['as_of_date']}"
-        "（案例复现日期；请勿视为当前规范状态）\n\n"
-        f"{task['project_doc']}"
+        "（历史案例复现日期，不代表当前规范状态）\n\n"
+        "勾选仅表示资料状态，不代表计算结果已核验或星级达标；本演示不解析计算文件。"
     )
 
 
@@ -138,15 +144,12 @@ def _comparison(previous: dict | None, current: dict) -> str:
     return "\n\n".join(lines)
 
 
-def run_demo(preset, project_name, city, building_type, construction, design_phase,
-             floor_area_m2, precheck, gap_analysis, provided_facts,
-             additional_notes, focus, as_of_date, previous,
+def run_demo(preset, project_name, floor_area_m2, provided_facts,
+             additional_notes, previous,
              progress=gr.Progress()):
     try:
         task = build_demo_task(_form(
-            preset, project_name, city, building_type, construction,
-            design_phase, floor_area_m2, precheck, gap_analysis,
-            provided_facts, additional_notes, focus, as_of_date,
+            preset, project_name, floor_area_m2, provided_facts, additional_notes,
         ))
         progress(0.05, desc="检查 GreenSpec RAG 服务")
         health = check_rag_health(task["greenspec_rag_url"])
@@ -175,7 +178,7 @@ def run_demo(preset, project_name, city, building_type, construction, design_pha
         progress(1, desc="分析完成")
         status = (
             f"🟢 本次分析完成。索引：`{health.get('active_index_manifest_id')}`；"
-            f"检索基准日期：`{as_of_date}`；运行目录：`{run_dir.name}`。"
+            f"检索基准日期：`{DEFAULT_AS_OF_DATE}`；运行目录：`{run_dir.name}`。"
         )
         return (status, _evidence_markdown(pack), _gaps_markdown(pack),
                 result.get("report") or "", _comparison(previous, current),
@@ -191,32 +194,27 @@ def create_app() -> gr.Blocks:
     initial = preset_values(first_preset)
     with gr.Blocks(title="GreenSpec 绿建预审演示") as app:
         gr.Markdown(
-            "# GreenSpec RAG × GPT Researcher\n"
-            "北京办公楼绿建预审演示。规范证据来自 GreenSpec RAG；报告由多智能体研究流程生成。"
-            "分析结果仅供方案/初设阶段咨询参考，须人工复核。"
+            "# GreenSpec｜北京新建办公楼二星升三星预审\n"
+            "北京新建普通办公楼从二星级目标提升到三星级目标的**证据与资料缺口预审助手**。"
+            "规范证据来自 GreenSpec RAG，报告由 GPT Researcher 多智能体流程生成；"
+            "结论须由专业人员复核。"
         )
         with gr.Row():
             preset = gr.Dropdown(list(PRESET_PATHS), value=first_preset, label="案例预设")
             health_button = gr.Button("检查 RAG 服务")
         health = gr.Markdown("点击“检查 RAG 服务”查看在线状态。")
-        gr.Markdown("**覆盖范围：** 当前仅验证北京新建普通办公楼、二星级预审与三星级差距分析。")
+        gr.Markdown("选择案例，调整项目资料状态，再点击「开始分析」。")
         with gr.Row():
             project_name = gr.Textbox(value=initial["project_name"], label="项目名称")
-            city = gr.Textbox(value=initial["city"], label="城市")
-            building_type = gr.Dropdown(["普通办公楼", "其他公共建筑"], value=initial["building_type"], label="建筑类型")
-        with gr.Row():
-            construction = gr.Dropdown(["新建", "既有"], value=initial["construction"], label="项目性质")
-            design_phase = gr.Dropdown(["方案深化", "初步设计"], value=initial["design_phase"], label="设计阶段")
             floor_area = gr.Number(value=initial["floor_area_m2"], label="总建筑面积（平方米）")
-        with gr.Row():
-            precheck = gr.Dropdown([("一星级", "one_star"), ("二星级", "two_star"), ("三星级", "three_star")], value=initial["precheck"], label="预审目标")
-            gap_analysis = gr.Dropdown([("一星级", "one_star"), ("二星级", "two_star"), ("三星级", "three_star")], value=initial["gap_analysis"], label="差距分析目标")
-            as_of_date = gr.Textbox(value=DEFAULT_AS_OF_DATE, label="规范检索基准日期 YYYY-MM-DD（案例复现日期）")
-        facts = gr.CheckboxGroup(list(FACT_FIELDS), value=initial["provided_facts"], label="已提供或已确认的资料（未勾选＝未提供/待确认）")
-        notes = gr.Textbox(value="", lines=3, label="补充项目说明（可选，待人工核实）")
-        focus = gr.Textbox(value="", lines=2, label="研究重点或问题（可选；留空则自动生成）")
-        form_components = [preset, project_name, city, building_type, construction, design_phase,
-                           floor_area, precheck, gap_analysis, facts, notes, focus, as_of_date]
+        facts = gr.CheckboxGroup(
+            list(FACT_FIELDS), value=initial["provided_facts"],
+            label="已有资料（仅声明有无；未勾选＝未提供/待确认）",
+        )
+        notes = gr.Textbox(
+            value="", lines=2, label="补充项目说明（可选；文字备注，待人工核实）",
+        )
+        form_components = [preset, project_name, floor_area, facts, notes]
         edit_status = gr.Markdown(f"当前使用：{first_preset}预设。")
         preview_panel = gr.Markdown(preview(first_preset, *(initial[key] for key in FORM_KEYS)))
         preset.change(select_preset, inputs=preset, outputs=form_components[1:] + [preview_panel, edit_status])

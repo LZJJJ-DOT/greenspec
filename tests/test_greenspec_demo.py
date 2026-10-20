@@ -41,6 +41,47 @@ def test_presets_and_edited_fact_share_one_source_of_truth():
     assert "local_clause_path" not in task
 
 
+def test_streamlined_form_keeps_scope_fixed_and_updates_missing_documents():
+    from multi_agents.demo_app import _form, preview
+
+    facts = list(preset_values("资料不完整")["provided_facts"])
+    facts.append("建筑能耗模拟")
+    value = _form("资料不完整", "现场办公楼", 38000, facts, "待补充计算书")
+    task = build_demo_task(value)
+
+    assert (value.city, value.building_type, value.construction) == ("北京市", "普通办公楼", "新建")
+    assert (value.precheck, value.gap_analysis, value.focus) == ("two_star", "three_star", "")
+    assert task["greenspec_retrieve_request"]["query"] == task["query"]
+    assert "建筑能耗模拟结果" not in task["project_profile"]["missing_fields"]
+    assert "建筑能耗模拟报告" in task["project_profile"]["available_documents"]
+
+    summary = preview("资料不完整", "现场办公楼", 38000, facts, "待补充计算书")
+    assert "现场办公楼" in summary and "待补充计算书" in summary
+    assert "2026-09-02" in summary and "不解析计算文件" in summary
+    assert "本次问题" not in summary and "设计阶段" not in summary
+
+
+def test_streamlined_gradio_page_only_exposes_demo_inputs():
+    from multi_agents.demo_app import create_app
+
+    app = create_app()
+    labels = {
+        component.get("props", {}).get("label")
+        for component in app.config["components"]
+        if component.get("props", {}).get("label")
+    }
+    assert {"案例预设", "项目名称", "总建筑面积（平方米）"} <= labels
+    assert not any(
+        term in label for label in labels
+        for term in ("项目性质", "设计阶段", "研究重点", "研究问题", "预审目标", "差距分析目标")
+    )
+    run = next(
+        dependency for dependency in app.config["dependencies"]
+        if dependency.get("api_name") == "run_demo"
+    )
+    assert len(run["inputs"]) == 6  # Five visible inputs and the previous-run state.
+
+
 def test_demo_rejects_unsupported_scope_and_bad_date():
     with pytest.raises(DemoInputError, match="仅验证北京"):
         build_demo_task(make_input(city="上海"))
