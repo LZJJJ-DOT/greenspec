@@ -2,6 +2,7 @@
 
 import asyncio
 from copy import deepcopy
+import threading
 
 import pytest
 
@@ -113,9 +114,13 @@ def test_gradio_page_exposes_profile_inputs_without_research_question():
     )
     run = next(
         dependency for dependency in app.config["dependencies"]
-        if dependency.get("api_name") == "run_demo"
+        if dependency.get("api_name") == "start_demo"
     )
     assert len(run["inputs"]) == 18  # Preset, sixteen project fields and previous-run state.
+    assert any(
+        dependency.get("api_name") == "poll_demo"
+        for dependency in app.config["dependencies"]
+    )
 
 
 def test_demo_rejects_unsupported_scope_and_bad_date():
@@ -141,6 +146,40 @@ def test_unsupported_profile_is_blocked_before_rag_call(monkeypatch):
     )
     assert "仅北京新建普通办公楼" in result[0]
     assert result[1:5] == ("", "", "", "")
+
+
+def test_background_analysis_can_be_polled_without_waiting_for_completion(monkeypatch):
+    from multi_agents import demo_app
+
+    monkeypatch.setattr(demo_app, "_JOBS", {})
+    monkeypatch.setattr(demo_app, "_LATEST_JOB_ID", None)
+    started = threading.Event()
+    release = threading.Event()
+
+    def fake_run(*inputs, status_callback):
+        status_callback("正在检索证据")
+        started.set()
+        assert release.wait(5)
+        return ("🟢 已完成", "证据", "缺口", "报告", "对比", None, None, {"gaps": []})
+
+    monkeypatch.setattr(demo_app, "run_demo", fake_run)
+    fields = preset_values("资料不完整")
+    args = ("资料不完整", *(fields[key] for key in demo_app.FORM_KEYS), None)
+    started_result = demo_app.start_demo(*args)
+    assert started_result[0] and "已启动" in started_result[1]
+    assert started.wait(5)
+    pending = demo_app.poll_demo(started_result[0], None)
+    assert "正在检索证据" in pending[0]
+    release.set()
+    for _ in range(50):
+        finished = demo_app.poll_demo(started_result[0], None)
+        if finished[0] == "🟢 已完成":
+            break
+        threading.Event().wait(0.01)
+    assert finished[:5] == ("🟢 已完成", "证据", "缺口", "报告", "对比")
+    assert finished[7] == {"gaps": []}
+    assert finished[8] == f"done:{started_result[0]}"
+    assert all(item == demo_app.gr.skip() for item in demo_app.poll_demo(finished[8], finished[7]))
 
 
 def test_rag_health_must_be_ready(monkeypatch):
@@ -250,7 +289,7 @@ def test_launch_reuses_running_demo(monkeypatch, capsys):
         status_code = 200
 
         def json(self):
-            return {"title": "GreenSpec 绿建预审演示"}
+            return {"title": demo_app.APP_TITLE}
 
     opened = []
     monkeypatch.setattr(demo_app.requests, "get", lambda *_a, **_k: Response())
@@ -261,6 +300,21 @@ def test_launch_reuses_running_demo(monkeypatch, capsys):
 
     assert opened == ["http://127.0.0.1:7860/"]
     assert "已在运行" in capsys.readouterr().out
+
+
+def test_launch_warns_when_old_demo_occupies_port(monkeypatch):
+    from multi_agents import demo_app
+
+    class Response:
+        status_code = 200
+
+        def json(self):
+            return {"title": "GreenSpec 绿建预审演示"}
+
+    monkeypatch.setattr(demo_app.requests, "get", lambda *_a, **_k: Response())
+    monkeypatch.setattr(demo_app, "create_app", lambda: pytest.fail("old server reused"))
+    with pytest.raises(SystemExit, match="旧版 GreenSpec"):
+        demo_app.launch_demo()
 
 
 def test_launch_respects_port_override(monkeypatch):

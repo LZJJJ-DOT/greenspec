@@ -5,6 +5,10 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
+import threading
+import time
+import traceback
+import uuid
 import webbrowser
 from pathlib import Path
 
@@ -25,6 +29,10 @@ FORM_KEYS = (
     "underground_floors", "plot_ratio", "green_space_ratio_percent",
     "provided_facts", "additional_notes",
 )
+_JOB_LOCK = threading.Lock()
+_JOBS: dict[str, dict] = {}
+_LATEST_JOB_ID: str | None = None
+APP_TITLE = "GreenSpec 绿建预审演示（后台运行版）"
 
 
 def _form(preset, *values) -> DemoInput:
@@ -178,15 +186,23 @@ def _comparison(previous: dict | None, current: dict) -> str:
     return "\n\n".join(lines)
 
 
-def run_demo(*form_and_previous, progress=gr.Progress()):
+def run_demo(*form_and_previous, status_callback=None):
     previous = form_and_previous[-1]
+
+    def stage(message: str) -> None:
+        print(f"[GreenSpec demo] {message}", flush=True)
+        if status_callback is not None:
+            status_callback(message)
+
     try:
+        stage("正在校验项目画像")
         task = build_demo_task(_form(*form_and_previous[:-1]))
-        progress(0.05, desc="检查 GreenSpec RAG 服务")
+        stage("正在检查 GreenSpec RAG 服务")
         health = check_rag_health(task["greenspec_rag_url"])
-        progress(0.15, desc="研究、规范检索、证据核验与报告生成中")
+        stage("正在进行多智能体研究；完整分析可能需要数分钟")
         from multi_agents.main import run_research_task
         result = asyncio.run(run_research_task(task["query"], task_override=task))
+        stage("研究已返回，正在整理证据和报告")
         pack = result.get("evidence_pack") or {}
         upstream = pack.get("upstream_evidence_pack") or {}
         if not upstream.get("evidence_pack_id"):
@@ -206,7 +222,7 @@ def run_demo(*form_and_previous, progress=gr.Progress()):
                 for item in pack.get("applicability_results", [])
             ),
         }
-        progress(1, desc="分析完成")
+        stage(f"分析完成：{run_dir.name}")
         status = (
             f"🟢 本次分析完成。索引：`{health.get('active_index_manifest_id')}`；"
             f"检索基准日期：`{DEFAULT_AS_OF_DATE}`；运行目录：`{run_dir.name}`。"
@@ -215,15 +231,86 @@ def run_demo(*form_and_previous, progress=gr.Progress()):
                 result.get("report") or "", _comparison(previous, current),
                 report_file, evidence_file, current)
     except Exception as exc:
+        print(f"[GreenSpec demo] Failed: {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
+        traceback.print_exc(file=sys.stderr)
         # Clear every result panel so a failed run cannot look like a live result.
         message = str(exc) if isinstance(exc, DemoInputError) else f"运行失败：{exc}"
         return (f"🔴 {message}", "", "", "", "", None, None, previous)
 
 
+def _run_background(job_id: str, inputs: tuple) -> None:
+    def update_stage(message: str) -> None:
+        with _JOB_LOCK:
+            _JOBS[job_id]["stage"] = message
+
+    try:
+        result = run_demo(*inputs, status_callback=update_stage)
+    except Exception as exc:
+        print(f"[GreenSpec demo] Background job failed: {exc}", file=sys.stderr, flush=True)
+        traceback.print_exc(file=sys.stderr)
+        result = (f"🔴 运行失败：{exc}", "", "", "", "", None, None, inputs[-1])
+    with _JOB_LOCK:
+        _JOBS[job_id]["result"] = result
+
+
+def start_demo(*form_and_previous):
+    """Start a long analysis without keeping the browser request open."""
+    global _LATEST_JOB_ID
+    try:
+        build_demo_task(_form(*form_and_previous[:-1]))
+    except DemoInputError as exc:
+        return (None, f"🔴 {exc}", "", "", "", "", None, None)
+
+    with _JOB_LOCK:
+        if _LATEST_JOB_ID and _JOBS[_LATEST_JOB_ID]["result"] is None:
+            current = _LATEST_JOB_ID
+            return (
+                current, "🟡 已有分析在运行，页面会继续显示进度。"
+                "请勿重复提交。", gr.skip(), gr.skip(), gr.skip(),
+                gr.skip(), gr.skip(), gr.skip(),
+            )
+        job_id = uuid.uuid4().hex
+        _JOBS[job_id] = {
+            "stage": "已提交，正在启动分析",
+            "started_at": time.monotonic(),
+            "result": None,
+        }
+        _LATEST_JOB_ID = job_id
+    threading.Thread(
+        target=_run_background, args=(job_id, tuple(form_and_previous)),
+        daemon=True, name=f"greenspec-demo-{job_id[:8]}",
+    ).start()
+    return (
+        job_id, "🟡 分析已启动，页面会自动更新进度；完整研究可能需要数分钟。",
+        "", "", "", "", None, None,
+    )
+
+
+def poll_demo(job_id, previous):
+    """Return short status polls so a long research run survives browser reconnects."""
+    if isinstance(job_id, str) and job_id.startswith("done:"):
+        return (gr.skip(),) * 9
+    with _JOB_LOCK:
+        job_id = job_id or _LATEST_JOB_ID
+        job = _JOBS.get(job_id)
+        if job is None:
+            return (gr.skip(),) * 9
+        result = job["result"]
+        stage = job["stage"]
+        elapsed = int(time.monotonic() - job["started_at"])
+    if result is not None:
+        return (*result, f"done:{job_id}")
+    return (
+        f"🟡 {stage}（已运行 {elapsed // 60} 分 {elapsed % 60} 秒）",
+        gr.skip(), gr.skip(), gr.skip(), gr.skip(), gr.skip(), gr.skip(),
+        previous, job_id,
+    )
+
+
 def create_app() -> gr.Blocks:
     first_preset = "资料不完整"
     initial = preset_values(first_preset)
-    with gr.Blocks(title="GreenSpec 绿建预审演示") as app:
+    with gr.Blocks(title=APP_TITLE) as app:
         gr.Markdown(
             "# GreenSpec｜项目画像与资料缺口预审\n"
             "可填写地点、建筑指标和资料状态，或通过案例预设一键填充。"
@@ -288,10 +375,16 @@ def create_app() -> gr.Blocks:
             report_file = gr.File(label="下载报告 Markdown")
             evidence_file = gr.File(label="下载证据 JSON")
         previous = gr.State(None)
+        active_job = gr.State(None)
         run_button.click(
-            run_demo, inputs=form_components + [previous],
-            outputs=[status, evidence, gaps, report, comparison, report_file, evidence_file, previous],
-            concurrency_limit=1,
+            start_demo, inputs=form_components + [previous],
+            outputs=[active_job, status, evidence, gaps, report, comparison, report_file, evidence_file],
+            queue=False,
+        )
+        gr.Timer(2).tick(
+            poll_demo, inputs=[active_job, previous],
+            outputs=[status, evidence, gaps, report, comparison, report_file, evidence_file, previous, active_job],
+            queue=False,
         )
     return app
 
@@ -321,18 +414,22 @@ def launch_demo() -> None:
         raise SystemExit("GRADIO_SERVER_PORT 必须是 1 到 65535 之间的端口号") from exc
 
     url = f"http://127.0.0.1:{port}/"
+    running_title = None
     try:
         response = requests.get(f"{url}config", timeout=2)
-        already_running = (
-            response.status_code == 200
-            and response.json().get("title") == "GreenSpec 绿建预审演示"
-        )
+        if response.status_code == 200:
+            running_title = response.json().get("title")
     except (requests.RequestException, ValueError):
-        already_running = False
-    if already_running:
+        pass
+    if running_title == APP_TITLE:
         print(f"GreenSpec 演示页面已在运行：{url}")
         webbrowser.open(url)
         return
+    if running_title and running_title.startswith("GreenSpec 绿建预审演示"):
+        raise SystemExit(
+            f"端口 {port} 上仍是旧版 GreenSpec 页面。请在旧版终端按 Ctrl+C 结束，"
+            "再重新运行启动命令；也可先设置 GRADIO_SERVER_PORT=7861 启动新版。"
+        )
 
     try:
         create_app().queue(default_concurrency_limit=1).launch(
@@ -352,5 +449,8 @@ if __name__ == "__main__":
     # otherwise use GBK and retry a successful request on an encoding error.
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
-            stream.reconfigure(encoding="utf-8", errors="replace")
+            stream.reconfigure(
+                encoding="utf-8", errors="replace",
+                line_buffering=True, write_through=True,
+            )
     launch_demo()
